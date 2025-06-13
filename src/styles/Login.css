@@ -1,0 +1,225 @@
+:root {
+  --amazon-primary: #f0c14b;
+  --amazon-dark: #131921;
+  --amazon-text: #0f1111;
+  --amazon-error: #b12704;
+  --amazon-success: #007600;
+  --amazon-border: #d5d9d9;
+  --amazon-bg: #fff;
+  --amazon-secondary-bg: #f7fafa;
+  --amazon-secondary-text: #565959;
+  --amazon-link: #007185;
+  --amazon-orange: #febd69;
+  --amazon-orange-hover: #f7ca00;
+  --amazon-focus: #007185;
+  --transition-fast: 0.2s ease;
+  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.login-container {
+  background-color: var(--amazon-bg);
+  font-family: Arial, sans-serif;
+  min-height: calc(100vh - 64px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  box-shadow: var(--shadow-light);
+}
+
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--amazon-text);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.login-error {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+  border: 1px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-error-icon {
+  font-size: 1.125rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-form-group {
+  margin-bottom: 16px;
+}
+
+.login-form-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+}
+
+.login-form-input {
+  width: 100%;
+  max-width: 100%;  /* Constrain to parent */
+  padding: 10px;
+  box-sizing: border-box;  /* Include padding/border in width */
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  background-color: var(--amazon-bg);
+  transition: var(--transition-fast);
+}
+
+.login-form-input:focus {
+  outline: 2px solid var(--amazon-focus);
+  border-color: var(--amazon-focus);
+}
+
+.sign-in-button {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: var(--transition-fast);
+}
+
+.sign-in-button:hover:not(:disabled) {
+  background-color: #f7ca00;
+}
+
+.sign-in-button:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.sign-in-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.login-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #e9ecef;
+  border-top-color: var(--amazon-text);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 8px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.login-signup-prompt {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  margin-top: 24px;
+}
+
+.login-signup-link {
+  color: var(--amazon-link);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-signup-link:hover {
+  color: #c45500;
+  text-decoration: underline;
+}
+
+.login-signup-link:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 12px;
+  }
+
+  .login-box {
+    padding: 16px;
+  }
+
+  .login-title {
+    font-size: 1.4rem;
+  }
+
+  .login-form-input {
+    font-size: 0.8125rem;
+  }
+
+  .sign-in-button {
+    font-size: 0.8125rem;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-box {
+    max-width: 100%;
+  }
+
+  .login-title {
+    font-size: 1.25rem;
+  }
+
+  .login-error {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .sign-in-button, .login-signup-link {
+    transition: none;
+  }
+
+  .login-loading-spinner {
+    animation: none;
+    border: 3px solid var(--amazon-text);
+  }
+}
+
+@media (prefers-contrast: high) {
+  .login-box {
+    border-width: 2px;
+  }
+
+  .login-form-input:focus {
+    outline: 3px solid var(--amazon-focus);
+  }
+
+  .sign-in-button, .login-signup-link {
+    border-width: 2px;
+    font-weight: 700;
+  }
+}
