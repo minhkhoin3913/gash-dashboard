@@ -1,0 +1,567 @@
+:root {
+  --amazon-primary: #f0c14b; /* Amazon yellow */
+  --amazon-dark: #131921; /* Amazon dark blue */
+  --amazon-text: #0f1111; /* Primary text */
+  --amazon-error: #b12704; /* Error red */
+  --amazon-success: #007600; /* Success green */
+  --amazon-border: #d5d9d9; /* Border gray */
+  --amazon-bg: #fff; /* White background */
+  --amazon-secondary-bg: #f7fafa; /* Light gray background */
+  --amazon-secondary-text: #565959; /* Secondary text */
+  --amazon-link: #007185; /* Link blue */
+  --amazon-focus: #007185; /* Focus outline */
+  --transition-fast: 0.2s ease;
+}
+
+/* Container */
+.accounts-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  background-color: var(--amazon-bg);
+  font-family: Arial, sans-serif;
+  color: var(--amazon-text);
+  min-height: 100vh;
+}
+
+/* Title */
+.accounts-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--amazon-text);
+  margin-bottom: 16px;
+}
+
+/* Toast Notification */
+.accounts-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: opacity var(--transition-fast);
+}
+
+.accounts-toast-success {
+  background-color: #d4edda;
+  color: var(--amazon-success);
+  border: 1px solid #c3e6cb;
+}
+
+.accounts-toast-error {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+  border: 1px solid #f5c6cb;
+}
+
+/* Error Display */
+.accounts-error {
+  color: var(--amazon-error);
+  background-color: #fff6f5;
+  border: 1px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.accounts-error-icon {
+  font-size: 1.125rem;
+}
+
+.accounts-retry-button {
+  padding: 6px 12px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.accounts-retry-button:hover {
+  background-color: #f7ca00;
+  border-color: #c89411;
+}
+
+.accounts-retry-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Loading State */
+.accounts-loading {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.accounts-progress-bar {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--amazon-border);
+  border-top: 3px solid var(--amazon-link);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Empty Accounts State */
+.accounts-empty {
+  text-align: center;
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+}
+
+/* Continue Shopping Button */
+.accounts-continue-shopping-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+}
+
+.accounts-continue-shopping-button:hover {
+  background-color: #f7ca00;
+}
+
+.accounts-continue-shopping-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Add Account Button */
+.accounts-add-button-container {
+  margin-bottom: 16px;
+}
+
+.accounts-add-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+}
+
+.accounts-add-button:hover {
+  background-color: #f7ca00;
+}
+
+.accounts-add-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Add Account Form */
+.accounts-add-form {
+  background-color: var(--amazon-bg);
+  padding: 16px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.accounts-form-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--amazon-text);
+  margin-bottom: 12px;
+  grid-column: 1 / -1;
+}
+
+.accounts-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.accounts-form-group label {
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+}
+
+.accounts-form-input,
+.accounts-form-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+  transition: box-shadow var(--transition-fast);
+}
+
+.accounts-form-input:focus,
+.accounts-form-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--amazon-focus);
+  border-color: var(--amazon-focus);
+}
+
+.accounts-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.accounts-create-button,
+.accounts-cancel-button {
+  padding: 8px 16px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color var(--transition-fast);
+}
+
+.accounts-create-button {
+  background-color: var(--amazon-primary);
+  color: var(--amazon-text);
+  border-color: #d5a429;
+}
+
+.accounts-create-button:hover {
+  background-color: #f7ca00;
+}
+
+.accounts-cancel-button {
+  background-color: var(--amazon-bg);
+  color: var(--amazon-text);
+}
+
+.accounts-cancel-button:hover {
+  background-color: var(--amazon-secondary-bg);
+}
+
+.accounts-create-button:focus,
+.accounts-cancel-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.accounts-create-button:disabled,
+.accounts-cancel-button:disabled {
+  background-color: #e9ecef;
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+
+/* Accounts Table */
+.accounts-table-container {
+  overflow-x: auto;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.accounts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+}
+
+.accounts-table th,
+.accounts-table td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--amazon-border);
+  vertical-align: middle;
+}
+
+.accounts-table-row:hover {
+  background-color: var(--amazon-secondary-bg);
+}
+
+/* Column Widths */
+.accounts-table th:nth-child(1) { /* Index */
+  width: 5%;
+}
+
+.accounts-table th:nth-child(2) { /* Username */
+  width: 15%;
+}
+
+.accounts-table th:nth-child(3) { /* Name */
+  width: 15%;
+}
+
+.accounts-table th:nth-child(4) { /* Email */
+  width: 20%;
+}
+
+.accounts-table th:nth-child(5) { /* Role */
+  width: 10%;
+}
+
+.accounts-table th:nth-child(6) { /* Status */
+  width: 10%;
+}
+
+.accounts-table th:nth-child(7) { /* Action */
+  width: 15%;
+}
+
+.accounts-table th:nth-child(8) { /* Image */
+  width: 15%;
+}
+
+/* Table Image */
+.accounts-image {
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Table Edit Mode Inputs */
+.accounts-form-input,
+.accounts-field-select {
+  width: 100%;
+  min-width: 100px;
+  max-width: 150px;
+  box-sizing: border-box;
+  padding: 6px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+}
+
+.accounts-field-select {
+  cursor: pointer;
+}
+
+.accounts-form-input:focus,
+.accounts-field-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--amazon-focus);
+  border-color: var(--amazon-focus);
+}
+
+/* Password Checkbox in Edit Mode */
+.accounts-form-checkbox {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accounts-form-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+}
+
+.accounts-form-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.accounts-form-checkbox input[type="password"] {
+  width: 100%;
+  max-width: 150px;
+  padding: 6px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+}
+
+.accounts-form-checkbox input[type="password"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--amazon-focus);
+  border-color: var(--amazon-focus);
+}
+
+/* Table Action Buttons */
+.accounts-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.accounts-edit-button,
+.accounts-update-button,
+.accounts-delete-button,
+.accounts-cancel-button {
+  padding: 6px 12px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.accounts-edit-button,
+.accounts-update-button {
+  background-color: var(--amazon-bg);
+  color: var(--amazon-link);
+}
+
+.accounts-edit-button:hover,
+.accounts-update-button:hover {
+  background-color: var(--amazon-secondary-bg);
+  color: #c45500;
+}
+
+.accounts-delete-button,
+.accounts-cancel-button {
+  background-color: var(--amazon-bg);
+  color: var(--amazon-error);
+}
+
+.accounts-delete-button:hover,
+.accounts-cancel-button:hover {
+  background-color: #fff5f6;
+}
+
+.accounts-edit-button:focus,
+.accounts-update-button:focus,
+.accounts-delete-button:focus,
+.accounts-cancel-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.accounts-update-button:disabled,
+.accounts-cancel-button:disabled {
+  background-color: #e9ecef;
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+  .accounts-container {
+    padding: 12px;
+  }
+
+  .accounts-table-container {
+    padding: 12px;
+  }
+
+  .accounts-table th,
+  .accounts-table td {
+    padding: 8px 4px;
+  }
+
+  .accounts-action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .accounts-form-input,
+  .accounts-field-select,
+  .accounts-form-checkbox input[type="password"] {
+    max-width: 100%;
+    min-width: 80px;
+  }
+
+  .accounts-image {
+    max-width: 40px;
+    max-height: 40px;
+  }
+
+  .accounts-add-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .accounts-title {
+    font-size: 1.25rem;
+  }
+
+  .accounts-table {
+    font-size: 0.75rem;
+  }
+
+  .accounts-form-title {
+    font-size: 1.125rem;
+  }
+
+  .accounts-form-input,
+  .accounts-field-select,
+  .accounts-form-checkbox input[type="password"] {
+    min-width: 60px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .accounts-toast,
+  .accounts-edit-button,
+  .accounts-update-button,
+  .accounts-delete-button,
+  .accounts-cancel-button,
+  .accounts-create-button,
+  .accounts-retry-button,
+  .accounts-continue-shopping-button,
+  .accounts-add-button,
+  .accounts-form-input,
+  .accounts-field-select {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .accounts-table-container,
+  .accounts-add-form {
+    border-width: 2px;
+  }
+
+  .accounts-edit-button,
+  .accounts-update-button,
+  .accounts-delete-button,
+  .accounts-cancel-button,
+  .accounts-create-button,
+  .accounts-retry-button,
+  .accounts-continue-shopping-button,
+  .accounts-add-button,
+  .accounts-form-input,
+  .accounts-field-select {
+    border-width: 2px;
+    font-weight: bold;
+  }
+}

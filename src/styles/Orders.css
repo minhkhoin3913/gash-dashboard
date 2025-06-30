@@ -21,7 +21,7 @@
   margin: 0 auto;
   padding: 16px;
   background-color: var(--amazon-bg);
-  font-family: Arial, sans-serif;
+  /* font-family: Arial, sans-serif; */
   color: var(--amazon-text);
   min-height: 100vh;
 }

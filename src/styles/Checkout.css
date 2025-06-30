@@ -1,0 +1,422 @@
+:root {
+  --amazon-primary: #f0c14b;
+  --amazon-dark: #131921;
+  --amazon-text: #0f1111;
+  --amazon-error: #b12704;
+  --amazon-success: #007600;
+  --amazon-border: #d5d9d9;
+  --amazon-bg: #fff;
+  --amazon-secondary-bg: #f7fafa;
+  --amazon-secondary-text: #565959;
+  --amazon-link: #007185;
+  --amazon-star: #f90;
+  --amazon-warning: #ff9900;
+  --amazon-focus: #007185;
+}
+
+/* Container */
+.checkout-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  background-color: var(--amazon-bg);
+  font-family: Arial, sans-serif;
+  color: var(--amazon-text);
+  min-height: 100vh;
+}
+
+.checkout-container > * {
+  margin: 16px 0;
+}
+
+/* Title */
+.checkout-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--amazon-text);
+  margin-bottom: 16px;
+}
+
+/* Toast notification */
+.checkout-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.checkout-toast-success {
+  background-color: #d4edda;
+  color: var(--amazon-success);
+  border: 1px solid #c3e6cb;
+}
+
+.checkout-toast-error {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+  border: 1px solid #f5c6cb;
+}
+
+/* Error */
+.checkout-error {
+  color: var(--amazon-error);
+  background-color: #fff5f6;
+  border: 1px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkout-error-icon {
+  font-size: 1.125rem;
+}
+
+.checkout-retry-button {
+  padding: 6px 12px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.checkout-retry-button:hover {
+  background-color: #f7ca00;
+  border-color: #c89411;
+}
+
+.checkout-retry-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Loading */
+.checkout-loading {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.checkout-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--amazon-border);
+  border-top: 3px solid var(--amazon-link);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Empty cart */
+.checkout-empty-cart {
+  text-align: center;
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.checkout-empty-cart p {
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  margin-bottom: 12px;
+}
+
+.checkout-continue-shopping-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color 0.2s;
+}
+
+.checkout-continue-shopping-button:hover {
+  background-color: #f7ca00;
+}
+
+.checkout-continue-shopping-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Main layout */
+.checkout-main {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+/* Cart summary */
+.checkout-cart-summary {
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.checkout-cart-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  margin-bottom: 12px;
+}
+
+.checkout-cart-items {
+  margin-bottom: 12px;
+}
+
+.checkout-cart-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--amazon-border);
+}
+
+.checkout-cart-item:last-child {
+  border-bottom: none;
+}
+
+.checkout-item-info {
+  flex: 1;
+}
+
+.checkout-item-name {
+  font-size: 0.9375rem;
+  color: var(--amazon-link);
+  margin: 0 0 4px;
+}
+
+.checkout-item-name:hover {
+  color: #c45500;
+  text-decoration: underline;
+}
+
+.checkout-item-variant,
+.checkout-item-quantity,
+.checkout-item-price {
+  font-size: 0.8125rem;
+  color: var(--amazon-secondary-text);
+  margin: 2px 0;
+}
+
+.checkout-item-total {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+}
+
+.checkout-cart-total {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--amazon-error);
+  text-align: right;
+  margin-top: 12px;
+}
+
+/* Form */
+.checkout-form {
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.checkout-form-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  margin-bottom: 12px;
+}
+
+.checkout-form-group {
+  margin-bottom: 16px;
+}
+
+.checkout-form-group > *{
+  margin: 16px;
+}
+
+.checkout-form-label {
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.checkout-form-input,
+.checkout-form-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  background-color: var(--amazon-bg);
+}
+
+.checkout-form-input:focus,
+.checkout-form-select:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.checkout-form-error {
+  font-size: 0.75rem;
+  color: var(--amazon-error);
+  margin-top: 4px;
+}
+
+/* Payment options */
+.checkout-payment-options {
+  margin-bottom: 16px;
+}
+
+.checkout-payment-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.checkout-payment-option input {
+  accent-color: var(--amazon-primary);
+}
+
+.checkout-payment-label {
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+}
+
+.checkout-payment-option.selected {
+  border-color: var(--amazon-primary);
+  background-color: #fffbe6;
+}
+
+/* Place order button */
+.checkout-place-order-button {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color 0.2s;
+}
+
+.checkout-place-order-button:hover:not(:disabled) {
+  background-color: #f7ca00;
+}
+
+.checkout-place-order-button:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.checkout-place-order-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .checkout-main {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .checkout-container {
+    padding: 12px;
+  }
+
+  .checkout-cart-item {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .checkout-form-input,
+  .checkout-form-select {
+    padding: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .checkout-title {
+    font-size: 1.25rem;
+  }
+
+  .checkout-cart-title,
+  .checkout-form-title {
+    font-size: 1rem;
+  }
+
+  .checkout-item-name {
+    font-size: 0.875rem;
+  }
+
+  .checkout-item-variant,
+  .checkout-item-quantity,
+  .checkout-item-price {
+    font-size: 0.75rem;
+  }
+
+  .checkout-cart-total {
+    font-size: 1rem;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .checkout-place-order-button,
+  .checkout-continue-shopping-button,
+  .checkout-retry-button,
+  .checkout-payment-option {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .checkout-cart-summary,
+  .checkout-form,
+  .checkout-payment-option {
+    border-width: 2px;
+  }
+
+  .checkout-place-order-button,
+  .checkout-continue-shopping-button,
+  .checkout-retry-button {
+    border-width: 2px;
+    font-weight: 700;
+  }
+}

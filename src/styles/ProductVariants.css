@@ -1,0 +1,505 @@
+:root {
+  --amazon-primary: #f0c14b;
+  --amazon-dark: #131921;
+  --amazon-text: #0f1111;
+  --amazon-error: #b12704;
+  --amazon-success: #007600;
+  --amazon-border: #d5d9d9;
+  --amazon-bg: #fff;
+  --amazon-secondary-bg: #f7fafa;
+  --amazon-secondary-text: #565959;
+  --amazon-link: #007185;
+  --amazon-focus: #007185;
+  --transition-fast: 0.2s ease;
+}
+
+/* Container */
+.variants-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  background-color: var(--amazon-bg);
+  font-family: Arial, sans-serif;
+  color: var(--amazon-text);
+  min-height: 100vh;
+}
+
+/* Title */
+.variants-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--amazon-text);
+  margin-bottom: 16px;
+}
+
+/* Toast Notification */
+.variants-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+  transition: opacity var(--transition-fast);
+}
+
+.variants-toast-success {
+  background-color: #d4edda;
+  color: var(--amazon-success);
+  border: 1px solid #c3e6cb;
+}
+
+.variants-toast-error {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+  border: 1px solid #f5c6cb;
+}
+
+.variants-toast-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+/* Error */
+.variants-error {
+  color: var(--amazon-error);
+  background-color: #fff5f6;
+  border: 1px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.variants-error-icon {
+  font-size: 1.125rem;
+}
+
+.variants-retry-button {
+  padding: 6px 12px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.variants-retry-button:hover {
+  background-color: #f7ca00;
+  border-color: #c89411;
+}
+
+.variants-retry-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Loading */
+.variants-loading {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.variants-progress-bar {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--amazon-border);
+  border-top: 3px solid var(--amazon-link);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 8px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty Variants */
+.variants-empty {
+  text-align: center;
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.variants-empty p {
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  margin-bottom: 12px;
+}
+
+.variants-continue-shopping-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+}
+
+.variants-continue-shopping-button:hover {
+  background-color: #f7ca00;
+}
+
+.variants-continue-shopping-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Add Variant Button */
+.variants-add-button-container {
+  margin-bottom: 16px;
+}
+
+.variants-add-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+}
+
+.variants-add-button:hover {
+  background-color: #f7ca00;
+}
+
+.variants-add-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Add Variant Form */
+.variants-add-form {
+  background-color: var(--amazon-secondary-bg);
+  padding: 16px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+/* Search Form */
+.variants-search-form {
+  background-color: var(--amazon-secondary-bg);
+  padding: 16px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.variants-form-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  margin-bottom: 12px;
+}
+
+.variants-form-group {
+  margin-bottom: 12px;
+}
+
+.variants-form-group label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+}
+
+.variants-form-input,
+.variants-form-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+  transition: border-color var(--transition-fast);
+}
+
+.variants-form-input:focus,
+.variants-form-select:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+  border-color: var(--amazon-focus);
+}
+
+.variants-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Variants Table */
+.variants-table-container {
+  overflow-x: auto;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.variants-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+}
+
+.variants-table th,
+.variants-table td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--amazon-border);
+  vertical-align: top;
+}
+
+.variants-table-row:hover {
+  background-color: var(--amazon-secondary-bg);
+}
+
+/* Column widths */
+.variants-table th:nth-child(1) { /* Index */
+  width: 4%;
+}
+
+.variants-table th:nth-child(2) { /* Product Name */
+  width: 20%;
+}
+
+.variants-table th:nth-child(3) { /* Color */
+  width: 15%;
+}
+
+.variants-table th:nth-child(4) { /* Size */
+  width: 15%;
+}
+
+.variants-table th:nth-child(5) { /* Image */
+  width: 20%;
+}
+
+.variants-table th:nth-child(6) { /* Action */
+  width: 26%;
+}
+
+.variants-table td {
+  vertical-align: middle;
+}
+
+.variants-image {
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+/* Input and select sizing in edit mode */
+.variants-form-input,
+.variants-field-select {
+  width: 100%;
+  min-width: 100px;
+  max-width: 200px;
+  box-sizing: border-box;
+}
+
+.variants-edit-button,
+.variants-update-button,
+.variants-cancel-button,
+.variants-delete-button,
+.variants-create-button {
+  padding: 6px 12px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--amazon-link);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  margin-right: 8px;
+}
+
+.variants-edit-button:hover,
+.variants-update-button:hover,
+.variants-create-button:hover {
+  background-color: var(--amazon-secondary-bg);
+  color: #c45500;
+}
+
+.variants-cancel-button,
+.variants-delete-button {
+  color: var(--amazon-error);
+}
+
+.variants-cancel-button:hover,
+.variants-delete-button:hover {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+}
+
+.variants-edit-button:focus,
+.variants-update-button:focus,
+.variants-cancel-button:focus,
+.variants-delete-button:focus,
+.variants-create-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.variants-update-button:disabled,
+.variants-create-button:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.variants-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.variants-field-select {
+  width: 100%;
+  min-width: 100px;
+  max-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.variants-field-select:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+  border-color: var(--amazon-focus);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .variants-container {
+    padding: 12px;
+  }
+
+  .variants-table-container {
+    padding: 12px;
+  }
+
+  .variants-table th,
+  .variants-table td {
+    padding: 8px 4px;
+  }
+
+  .variants-action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .variants-form-input,
+  .variants-form-select,
+  .variants-field-select {
+    max-width: 100%;
+    min-width: 80px;
+  }
+
+  .variants-image {
+    max-width: 40px;
+    max-height: 40px;
+  }
+
+  .variants-add-form,
+  .variants-search-form {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .variants-title {
+    font-size: 1.25rem;
+  }
+
+  .variants-table {
+    font-size: 0.8125rem;
+  }
+
+  .variants-form-title {
+    font-size: 1.125rem;
+  }
+
+  .variants-form-input,
+  .variants-form-select,
+  .variants-field-select {
+    min-width: 60px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .variants-toast,
+  .variants-retry-button,
+  .variants-continue-shopping-button,
+  .variants-edit-button,
+  .variants-update-button,
+  .variants-cancel-button,
+  .variants-delete-button,
+  .variants-create-button,
+  .variants-field-select,
+  .variants-form-select,
+  .variants-form-input {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .variants-table-container,
+  .variants-add-form,
+  .variants-search-form {
+    border-width: 2px;
+  }
+
+  .variants-retry-button,
+  .variants-continue-shopping-button,
+  .variants-edit-button,
+  .variants-update-button,
+  .variants-cancel-button,
+  .variants-delete-button,
+  .variants-create-button,
+  .variants-field-select,
+  .variants-form-select,
+  .variants-form-input {
+    border-width: 2px;
+    font-weight: 700;
+  }
+}

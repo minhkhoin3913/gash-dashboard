@@ -1,17 +1,23 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
-// import Products from "./components/Products";
-// import ProductVariants from "./components/ProductVariants";
+import Products from "./components/Products";
+import ProductVariants from "./components/ProductVariants";
 import Login from "./components/Login";
-// import Profile from "./components/Profile";
-// import Carts from "./components/Carts";
+import Profile from "./components/Profile";
+import Carts from "./components/Carts";
 import Orders from "./components/Orders";
-// import ProductSpecifications from "./components/ProductSpecifications";
-// import Accounts from "./components/Accounts";
-// import Categories from "./components/Categories";
-// import Feedbacks from "./components/Feedbacks";
-
+import ProductSpecifications from "./components/ProductSpecifications";
+import Accounts from "./components/Accounts";
+import Categories from "./components/Categories";
+import Feedbacks from "./components/Feedbacks";
+import ImportBills from "./components/ImportBills";
 
 import Layout from "./components/Layout";
 
@@ -21,7 +27,7 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
 
   // Check if user is authenticated and has admin or manager role
-  if (!user || !['admin', 'manager'].includes(user.role)) {
+  if (!user || !["admin", "manager"].includes(user.role)) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
@@ -35,7 +41,7 @@ const App = () => {
         <Layout>
           <Routes>
             <Route path="/login" element={<Login />} />
-            {/* <Route
+            <Route
               path="/products"
               element={
                 <ProtectedRoute>
@@ -43,11 +49,19 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-             <Route
+            <Route
               path="/feedbacks"
               element={
                 <ProtectedRoute>
                   <Feedbacks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/imports"
+              element={
+                <ProtectedRoute>
+                  <ImportBills />
                 </ProtectedRoute>
               }
             />
@@ -98,7 +112,7 @@ const App = () => {
                   <Categories />
                 </ProtectedRoute>
               }
-            /> */}
+            />
             <Route
               path="/orders"
               element={

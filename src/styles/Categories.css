@@ -1,0 +1,481 @@
+:root {
+  --amazon-primary: #f0c14b; /* Amazon yellow */
+  --amazon-dark: #131921; /* Amazon dark blue */
+  --amazon-text: #0f1111; /* Primary text */
+  --amazon-error: #b12704; /* Error red */
+  --amazon-success: #007600; /* Success green */
+  --amazon-border: #d5d9d9; /* Border gray */
+  --amazon-bg: #fff; /* White background */
+  --amazon-secondary-bg: #f7fafa; /* Light gray background */
+  --amazon-secondary-text: #565959; /* Secondary text */
+  --amazon-link: #007185; /* Link blue */
+  --amazon-focus: #007185; /* Focus outline */
+  --transition-fast: 0.2s ease-in-out;
+}
+
+/* Container */
+.categories-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 16px;
+  background-color: var(--amazon-bg);
+  font-family: Arial, sans-serif;
+  color: var(--amazon-text);
+  min-height: 100vh;
+}
+
+/* Title */
+ */
+.categories-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--amazon-text);
+  margin-bottom: 16px;
+}
+
+/* Toast Notification */
+.categories-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: opacity var(--transition-fast);
+}
+
+.categories-toast-success {
+  background-color: #d4edda;
+  color: var(--amazon-success);
+  border: 1px solid #c3e6cb;
+}
+
+.categories-toast-error {
+  background-color: #f5f6;
+  color: var(--amazon-error);
+  border: 1px solid #f5c6cb;
+}
+
+/* Error Display */
+.categories-error {
+  color: var(--amazon-error);
+  background-color: #fff5f6;
+  border: 1px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.categories-error-icon {
+  font-size: 1.125rem;
+}
+
+.categories-retry-button {
+  padding: 6px 12px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.categories-retry-button:hover {
+  background-color: #f7ca00;
+  border-color: #c89411;
+}
+
+.categories-retry-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Loading State */
+.categories-loading {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.categories-progress-bar {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--amazon-border);
+  border-top: 3px solid var(--amazon-link);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Empty Categories State */
+.categories-empty {
+  text-align: center;
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+}
+
+/* Continue Shopping Button */
+.categories-continue-shopping-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+}
+
+.categories-continue-shopping-button:hover {
+  background-color: #f7ca00;
+}
+
+.categories-continue-shopping-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Add Category Button */
+.categories-add-button-container {
+  margin-bottom: 16px;
+}
+
+.categories-add-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: bold;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+}
+
+.categories-add-button:hover {
+  background-color: #f7ca00;
+}
+
+.categories-add-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Add Category Form */
+.categories-add-form {
+  max-width: 600px;
+  background-color: var(--amazon-bg);
+  padding: 16px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.categories-form-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--amazon-text);
+  margin-bottom: 12px;
+}
+
+.categories-form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.categories-form-group label {
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+}
+
+.categories-form-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+  transition: box-shadow var(--transition-fast);
+}
+
+.categories-form-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--amazon-focus);
+  border-color: var(--amazon-focus);
+}
+
+.categories-form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.categories-create-button,
+.categories-cancel-button {
+  padding: 8px 16px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color var(--transition-fast);
+}
+
+.categories-create-button {
+  background-color: var(--amazon-primary);
+  color: var(--amazon-text);
+  border-color: #d5a429;
+}
+
+.categories-create-button:hover {
+  background-color: #f7ca00;
+}
+
+.categories-cancel-button {
+  background-color: var(--amazon-bg);
+  color: var(--amazon-text);
+}
+
+.categories-cancel-button:hover {
+  background-color: var(--amazon-secondary-bg);
+}
+
+.categories-create-button:focus,
+.categories-cancel-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.categories-create-button:disabled,
+.categories-cancel-button:disabled {
+  background-color: #e9ecef;
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+
+/* Categories Table */
+.categories-table-container {
+  overflow-x: auto;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.categories-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+}
+
+.categories-table th,
+.categories-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--amazon-border);
+  vertical-align: middle;
+}
+
+.categories-table-row:hover {
+  background-color: var(--amazon-secondary-bg);
+}
+
+/* Column Widths */
+.categories-table th:nth-child(1) { /* Index */
+  width: 10%;
+}
+
+.categories-table th:nth-child(2) { /* Name */
+  width: 60%;
+}
+
+.categories-table th:nth-child(3) { /* Action */
+  width: 30%;
+}
+
+/* Table Edit Mode */
+.categories-form-input {
+  width: 100%;
+  min-width: 200px;
+  max-width: 400px;
+  box-sizing: border-box;
+  padding: 6px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+}
+
+.categories-form-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--amazon-focus);
+  border-color: var(--amazon-focus);
+}
+
+/* Table Action Buttons */
+.categories-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.categories-edit-button,
+.categories-update-button,
+.categories-delete-button,
+.categories-cancel-button {
+  padding: 6px 12px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.categories-edit-button,
+.categories-update-button {
+  background-color: var(--amazon-bg);
+  color: var(--amazon-link);
+}
+
+.categories-edit-button:hover,
+.categories-update-button:hover {
+  background-color: var(--amazon-secondary-bg);
+  color: #c45500;
+}
+
+.categories-delete-button,
+.categories-cancel-button {
+  background-color: var(--amazon-bg);
+  color: var(--amazon-error);
+}
+
+.categories-delete-button:hover,
+.categories-cancel-button:hover {
+  background-color: #fff5f6;
+}
+
+.categories-edit-button:focus,
+.categories-update-button:focus,
+.categories-delete-button:focus,
+.categories-cancel-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.categories-update-button:disabled,
+.categories-cancel-button:disabled {
+  background-color: #e9ecef;
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .categories-container {
+    padding: 12px;
+  }
+
+  .categories-table-container {
+    padding: 12px;
+  }
+
+  .categories-table th,
+  .categories-table td {
+    padding: 8px 12px;
+  }
+
+  .categories-action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .categories-form-input {
+    min-width: 150px;
+    max-width: 100%;
+  }
+
+  .categories-add-form {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .categories-title {
+    font-size: 1.25rem;
+  }
+
+  .categories-table {
+    font-size: 0.75rem;
+  }
+
+  .categories-form-title {
+    font-size: 1.125rem;
+  }
+
+  .categories-form-input {
+    min-width: 100px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .categories-toast,
+  .categories-edit-button,
+  .categories-update-button,
+  .categories-delete-button,
+  .categories-cancel-button,
+  .categories-create-button,
+  .categories-retry-button,
+  .categories-continue-shopping-button,
+  .categories-add-button,
+  .categories-form-input {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .categories-table-container,
+  .categories-add-form {
+    border-width: 2px;
+  }
+
+  .categories-edit-button,
+  .categories-update-button,
+  .categories-delete-button,
+  .categories-cancel-button,
+  .categories-create-button,
+  .categories-retry-button,
+  .categories-continue-shopping-button,
+  .categories-add-button,
+  .categories-form-input {
+    border-width: 2px;
+    font-weight: bold;
+  }
+}

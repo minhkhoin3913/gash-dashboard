@@ -25,7 +25,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  font-family: Arial, sans-serif;
+  /* font-family: Arial, sans-serif; */
   background-color: var(--amazon-bg);
 }
 
@@ -143,7 +143,7 @@
   border: 1px solid var(--amazon-border);
   border-right: none;
   font-size: 0.875rem;
-  font-family: Arial, sans-serif;
+  /* font-family: Arial, sans-serif; */
   background-color: var(--amazon-bg);
   color: var(--amazon-text);
 }
@@ -197,7 +197,7 @@
   background: none;
   border: 1px solid transparent;
   color: var(--amazon-bg);
-  font-family: Arial, sans-serif;
+  /* font-family: Arial, sans-serif; */
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -273,7 +273,7 @@
   border: none;
   color: var(--amazon-text);
   text-align: left;
-  font-family: Arial, sans-serif;
+  /* font-family: Arial, sans-serif; */
   font-size: 0.875rem;
   cursor: pointer;
   transition: background-color var(--transition-fast), color var(--transition-fast);
@@ -364,7 +364,7 @@
   color: var(--amazon-bg);
   text-decoration: none;
   font-size: 0.875rem;
-  font-family: Arial, sans-serif;
+  /* font-family: Arial, sans-serif; */
   transition: background-color var(--transition-fast);
 }
 
