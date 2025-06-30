@@ -1,0 +1,540 @@
+:root {
+  --amazon-primary: #f0c14b;
+  --amazon-dark: #131921;
+  --amazon-text: #0f1111;
+  --amazon-error: #b12704;
+  --amazon-success: #007600;
+  --amazon-border: #d5d9d9;
+  --amazon-bg: #fff;
+  --amazon-secondary-bg: #f7fafa;
+  --amazon-secondary-text: #565959;
+  --amazon-link: #007185;
+  --amazon-focus: #007185;
+  --transition-fast: 0.2s ease;
+}
+
+/* Container */
+.specifications-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  background-color: var(--amazon-bg);
+  font-family: Arial, sans-serif;
+  color: var(--amazon-text);
+  min-height: 100vh;
+}
+
+/* Title */
+.specifications-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--amazon-text);
+  margin-bottom: 16px;
+}
+
+/* Tabs */
+.specifications-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--amazon-border);
+  margin-bottom: 16px;
+}
+
+.specifications-tab {
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-link);
+  background-color: var(--amazon-bg);
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.specifications-tab:hover {
+  color: #c45500;
+}
+
+.specifications-tab.active {
+  color: var(--amazon-text);
+  border-bottom: 2px solid var(--amazon-primary);
+}
+
+.specifications-tab:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Toast Notification */
+.specifications-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+  transition: opacity var(--transition-fast);
+}
+
+.specifications-toast-success {
+  background-color: #d4edda;
+  color: var(--amazon-success);
+  border: 1px solid #c3e6cb;
+}
+
+.specifications-toast-error {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+  border: 1px solid #f5c6cb;
+}
+
+/* Error */
+.specifications-error {
+  color: var(--amazon-error);
+  background-color: #fff5f6;
+  border: 1px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.specifications-error-icon {
+  font-size: 1.125rem;
+}
+
+.specifications-retry-button {
+  padding: 6px 12px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.specifications-retry-button:hover {
+  background-color: #f7ca00;
+  border-color: #c89411;
+}
+
+.specifications-retry-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Loading */
+.specifications-loading {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.specifications-progress-bar {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--amazon-border);
+  border-top: 3px solid var(--amazon-link);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 8px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty Specifications */
+.specifications-empty {
+  text-align: center;
+  padding: 32px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.specifications-empty p {
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  margin-bottom: 12px;
+}
+
+.specifications-continue-shopping-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+}
+
+.specifications-continue-shopping-button:hover {
+  background-color: #f7ca00;
+}
+
+.specifications-continue-shopping-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Add Specification Button */
+.specifications-add-button-container {
+  margin-bottom: 16px;
+}
+
+.specifications-add-button {
+  padding: 10px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+}
+
+.specifications-add-button:hover {
+  background-color: #f7ca00;
+}
+
+.specifications-add-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+/* Add Specification Form */
+.specifications-add-form {
+  background-color: var(--amazon-secondary-bg);
+  padding: 16px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.specifications-form-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--amazon-text);
+  margin-bottom: 12px;
+}
+
+.specifications-form-group {
+  margin-bottom: 12px;
+}
+
+.specifications-form-group label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+}
+
+.specifications-form-input,
+.specifications-form-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+  transition: border-color var(--transition-fast);
+}
+
+.specifications-form-input:focus,
+.specifications-form-select:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+  border-color: var(--amazon-focus);
+}
+
+.specifications-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Specifications Table */
+.specifications-table-container {
+  overflow-x: auto;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.specifications-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+}
+
+.specifications-table th,
+.specifications-table td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--amazon-border);
+  vertical-align: middle;
+}
+
+.specifications-table-row:hover {
+  background-color: var(--amazon-secondary-bg);
+}
+
+/* Column widths for Images table */
+.specifications-table.images th:nth-child(1) { /* Index */
+  width: 5%;
+}
+
+.specifications-table.images th:nth-child(2) { /* Product Name */
+  width: 30%;
+}
+
+.specifications-table.images th:nth-child(3) { /* Image */
+  width: 35%;
+}
+
+.specifications-table.images th:nth-child(4) { /* Action */
+  width: 30%;
+}
+
+/* Column widths for Colors/Sizes table */
+.specifications-table.colors th:nth-child(1),
+.specifications-table.sizes th:nth-child(1) { /* Index */
+  width: 10%;
+}
+
+.specifications-table.colors th:nth-child(2),
+.specifications-table.sizes th:nth-child(2) { /* Name */
+  width: 60%;
+}
+
+.specifications-table.colors th:nth-child(3),
+.specifications-table.sizes th:nth-child(3) { /* Action */
+  width: 30%;
+}
+
+.specifications-image {
+  max-width: 100px;
+  max-height: 100px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+/* Input and select sizing in edit mode */
+.specifications-form-input,
+.specifications-field-select {
+  width: 100%;
+  min-width: 100px;
+  max-width: 200px;
+  box-sizing: border-box;
+}
+
+.specifications-edit-button,
+.specifications-update-button,
+.specifications-cancel-button,
+.specifications-delete-button,
+.specifications-create-button {
+  padding: 6px 12px;
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--amazon-link);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  margin-right: 8px;
+}
+
+.specifications-edit-button:hover,
+.specifications-update-button:hover,
+.specifications-create-button:hover {
+  background-color: var(--amazon-secondary-bg);
+  color: #c45500;
+}
+
+.specifications-cancel-button,
+.specifications-delete-button {
+  color: var(--amazon-error);
+}
+
+.specifications-cancel-button:hover,
+.specifications-delete-button:hover {
+  background-color: #fff5f6;
+  color: var(--amazon-error);
+}
+
+.specifications-edit-button:focus,
+.specifications-update-button:focus,
+.specifications-cancel-button:focus,
+.specifications-delete-button:focus,
+.specifications-create-button:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+}
+
+.specifications-update-button:disabled,
+.specifications-create-button:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.specifications-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.specifications-field-select {
+  width: 100%;
+  min-width: 100px;
+  max-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: var(--amazon-bg);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.specifications-field-select:focus {
+  outline: 2px solid var(--amazon-focus);
+  outline-offset: 2px;
+  border-color: var(--amazon-focus);
+}
+
+/* Responsive */
+@media screen and (max-width: 768px) {
+  .specifications-container {
+    padding: 12px;
+  }
+
+  .specifications-table-container {
+    padding: 12px;
+  }
+
+  .specifications-table th,
+  .specifications-table td {
+    padding: 8px 4px;
+  }
+
+  .specifications-action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .specifications-form-input,
+  .specifications-form-select,
+  .specifications-field-select {
+    max-width: 100%;
+    min-width: 80px;
+  }
+
+  .specifications-image {
+    max-width: 80px;
+    max-height: 80px;
+  }
+
+  .specifications-add-form {
+    padding: 12px;
+  }
+
+  .specifications-tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .specifications-tab {
+    width: 100%;
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid var(--amazon-border);
+  }
+
+  .specifications-tab.active {
+    border-bottom: 2px solid var(--amazon-primary);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .specifications-title {
+    font-size: 1.25rem;
+  }
+
+  .specifications-table {
+    font-size: 0.75rem;
+  }
+
+  .specifications-form-title {
+    font-size: 1.125rem;
+  }
+
+  .specifications-form-input,
+  .specifications-form-select,
+  .specifications-field-select {
+    min-width: 60px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .specifications-toast,
+  .specifications-retry-button,
+  .specifications-continue-shopping-button,
+  .specifications-edit-button,
+  .specifications-update-button,
+  .specifications-cancel-button,
+  .specifications-delete-button,
+  .specifications-create-button,
+  .specifications-field-select,
+  .specifications-form-select,
+  .specifications-form-input,
+  .specifications-tab {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .specifications-table-container,
+  .specifications-add-form {
+    border-width: 2px;
+  }
+
+  .specifications-retry-button,
+  .specifications-continue-shopping-button,
+  .specifications-edit-button,
+  .specifications-update-button,
+  .specifications-cancel-button,
+  .specifications-delete-button,
+  .specifications-create-button,
+  .specifications-field-select,
+  .specifications-form-select,
+  .specifications-form-input,
+  .specifications-tab {
+    border-width: 2px;
+    font-weight: 700;
+  }
+}
