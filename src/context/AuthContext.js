@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
 
     if (token && storedUser && loginTime) {
       const currentTime = Date.now();
-      const sessionDuration = 60 * 60 * 1000; // 1 hour in milliseconds
+      const sessionDuration = 24 * 60 * 60 * 1000; // 1 day in milliseconds
       const timeElapsed = currentTime - parseInt(loginTime);
 
       if (timeElapsed >= sessionDuration) {
@@ -81,10 +81,10 @@ export const AuthProvider = ({ children }) => {
       
       setUser(account);
 
-      // Set 1-hour timer for auto logout
+      // Set 1-day timer for auto logout
       setTimeout(() => {
         handleSessionExpired();
-      }, 60 * 60 * 1000); // 1 hour
+      }, 24 * 60 * 60 * 1000); // 1 day
 
       navigate('/');
     } catch (error) {
@@ -115,10 +115,10 @@ export const AuthProvider = ({ children }) => {
       
       setUser(account);
 
-      // Set 1-hour timer for auto logout
+      // Set 1-day timer for auto logout
       setTimeout(() => {
         handleSessionExpired();
-      }, 60 * 60 * 1000); // 1 hour
+      }, 24 * 60 * 60 * 1000); // 1 day
 
       navigate('/');
     } catch (error) {

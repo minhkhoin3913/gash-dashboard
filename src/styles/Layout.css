@@ -99,7 +99,7 @@
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  justify-content: space-evenly;
+  justify-content: space-between;
   align-items: center;
   padding: 0 16px;
   gap: 16px;
@@ -128,63 +128,7 @@
   border-radius: 2px;
 }
 
-/* Search bar */
-.search-bar {
-  flex-grow: 1;
-  display: flex;
-  max-width: 800px;
-  border-radius: 4px;
-  overflow: hidden;
-}
 
-.search-bar input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--amazon-border);
-  border-right: none;
-  font-size: 0.875rem;
-  /* font-family: Arial, sans-serif; */
-  background-color: var(--amazon-bg);
-  color: var(--amazon-text);
-}
-
-.search-bar input:focus {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: -1px;
-  border-color: var(--amazon-focus);
-}
-
-.search-bar input:disabled {
-  background-color: var(--amazon-secondary-bg);
-  cursor: not-allowed;
-}
-
-.search-button {
-  background-color: var(--amazon-orange);
-  border: 1px solid #d5a429;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition-fast);
-}
-
-.search-button:hover:not(:disabled) {
-  background-color: var(--amazon-orange-hover);
-  border-color: #c89411;
-}
-
-.search-button:disabled {
-  background-color: #e9ecef;
-  cursor: not-allowed;
-}
-
-.search-button:focus {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: -1px;
-}
 
 /* Navigation actions */
 .nav-actions {
@@ -397,10 +341,6 @@
   .navbar-container {
     gap: 12px;
   }
-
-  .search-bar {
-    max-width: 600px;
-  }
 }
 
 @media (max-width: 768px) {
@@ -422,25 +362,17 @@
   }
 
   .navbar-container {
-    flex-direction: column;
+    flex-direction: row;
     padding: 12px;
-    gap: 12px;
-  }
-
-  .search-bar {
-    width: 100%;
-    order: 2;
+    gap: 16px;
   }
 
   .nav-actions {
-    width: 100%;
-    justify-content: space-around;
-    order: 3;
+    justify-content: flex-end;
   }
 
   .logo {
-    margin: 10px;
-    order: 1;
+    margin: 0;
   }
 
   .layout-error-notification {
@@ -463,7 +395,6 @@
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .logo,
-  .search-button,
   .nav-button,
   .dropdown-item,
   .sidebar-item,
@@ -488,7 +419,6 @@
   }
 
   .nav-button,
-  .search-button,
   .dropdown-item,
   .sidebar-item,
   .sidebar-close,

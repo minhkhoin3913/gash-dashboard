@@ -56,6 +56,7 @@ const Feedbacks = () => {
     productId: '',
     username: ''
   });
+  const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -63,6 +64,8 @@ const Feedbacks = () => {
   const [variants, setVariants] = useState([]);
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(20);
   const navigate = useNavigate();
 
   // Auto-dismiss toast
@@ -337,6 +340,35 @@ const Feedbacks = () => {
     fetchFeedbacks();
   }, [fetchFeedbacks]);
 
+  // Pagination calculations
+  const totalPages = Math.ceil(feedbacks.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const currentFeedbacks = feedbacks.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Handle previous/next page
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  }, []);
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
+
+  // Toggle filter visibility
+  const toggleFilters = useCallback(() => {
+    setShowFilters(prev => !prev);
+  }, []);
+
+  // Check if any filters are active
+  const hasActiveFilters = useCallback(() => {
+    return searchParams.startDate || searchParams.endDate || searchParams.productId || searchParams.username;
+  }, [searchParams]);
+
   // Loading state during auth verification
   if (isAuthLoading) {
     return (
@@ -362,43 +394,59 @@ const Feedbacks = () => {
         </div>
       )}
 
+      <div className="feedbacks-header">
       <h1 className="feedbacks-title">Feedback Management</h1>
+        <div className="feedbacks-header-actions">
+          <button
+            className="feedbacks-filter-toggle"
+            onClick={toggleFilters}
+            aria-label="Toggle filters"
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+        </div>
+      </div>
 
-      {/* Search Form */}
-      <div className="feedbacks-search-form">
-        <h2 className="feedbacks-form-title">Search Feedback</h2>
-        <div className="feedbacks-form-group">
-          <label htmlFor="search-start-date">Start Date</label>
+      {/* Filter Section */}
+      {showFilters && (
+        <div className="feedbacks-filters">
+          <h2 className="feedbacks-search-title">Search Feedback</h2>
+          <div className="feedbacks-filters-grid">
+            <div className="feedbacks-search-section">
+              <div className="feedbacks-filter-group">
+                <label htmlFor="search-start-date" className="feedbacks-filter-label">Start Date</label>
           <input
             id="search-start-date"
             type="date"
             value={searchParams.startDate}
-            onChange={(e) => handleFieldChange(e, 'search', 'startDate')}
-            className="feedbacks-form-input"
+                  onChange={(e) => { handleFieldChange(e, 'search', 'startDate'); fetchFeedbacks(); }}
+                  className="feedbacks-filter-input"
             aria-label="Start Date"
           />
         </div>
-        <div className="feedbacks-form-group">
-          <label htmlFor="search-end-date">End Date</label>
+              <div className="feedbacks-filter-group">
+                <label htmlFor="search-end-date" className="feedbacks-filter-label">End Date</label>
           <input
             id="search-end-date"
             type="date"
             value={searchParams.endDate}
-            onChange={(e) => handleFieldChange(e, 'search', 'endDate')}
-            className="feedbacks-form-input"
+                  onChange={(e) => { handleFieldChange(e, 'search', 'endDate'); fetchFeedbacks(); }}
+                  className="feedbacks-filter-input"
             aria-label="End Date"
           />
         </div>
-        <div className="feedbacks-form-group">
-          <label htmlFor="search-product-id">Product</label>
+            </div>
+            <div className="feedbacks-filter-options">
+              <div className="feedbacks-filter-group">
+                <label htmlFor="search-product-id" className="feedbacks-filter-label">Product</label>
           <select
             id="search-product-id"
             value={searchParams.productId}
-            onChange={(e) => handleFieldChange(e, 'search', 'productId')}
-            className="feedbacks-form-select"
+                  onChange={(e) => { handleFieldChange(e, 'search', 'productId'); fetchFeedbacks(); }}
+                  className="feedbacks-filter-select"
             aria-label="Select Product"
           >
-            <option value="">Select Product</option>
+                  <option value="">All Products</option>
             {products.map(product => (
               <option key={product._id} value={product._id}>
                 {product.pro_name || 'N/A'}
@@ -406,16 +454,16 @@ const Feedbacks = () => {
             ))}
           </select>
         </div>
-        <div className="feedbacks-form-group">
-          <label htmlFor="search-username">Username</label>
+              <div className="feedbacks-filter-group">
+                <label htmlFor="search-username" className="feedbacks-filter-label">Username</label>
           <select
             id="search-username"
             value={searchParams.username}
-            onChange={(e) => handleFieldChange(e, 'search', 'username')}
-            className="feedbacks-form-select"
+                  onChange={(e) => { handleFieldChange(e, 'search', 'username'); fetchFeedbacks(); }}
+                  className="feedbacks-filter-select"
             aria-label="Select User"
           >
-            <option value="">Select User</option>
+                  <option value="">All Users</option>
             {users.map(user => (
               <option key={user._id} value={user.username}>
                 {user.username}
@@ -423,133 +471,20 @@ const Feedbacks = () => {
             ))}
           </select>
         </div>
-        <div className="feedbacks-form-actions">
-          <button
-            onClick={fetchFeedbacks}
-            className="feedbacks-create-button"
-            aria-label="Search feedbacks"
-            disabled={loading}
-          >
-            Search
-          </button>
-          <button
-            onClick={clearSearch}
-            className="feedbacks-cancel-button"
-            aria-label="Clear search"
-            disabled={loading}
-          >
-            Clear
-          </button>
-        </div>
       </div>
-
-      {/* Add Feedback Button */}
-      <div className="feedbacks-add-button-container">
-        <button
-          onClick={toggleAddForm}
-          className="feedbacks-add-button"
-          aria-label={showAddForm ? 'Cancel adding feedback' : 'Add new feedback'}
-        >
-          {showAddForm ? 'Cancel' : 'Add Feedback'}
-        </button>
-      </div>
-
-      {/* Add Feedback Form */}
-      {showAddForm && (
-        <div className="feedbacks-add-form">
-          <h2 className="feedbacks-form-title">Add New Feedback</h2>
-          <div className="feedbacks-form-group">
-            <label htmlFor="new-order-id">Order</label>
-            <select
-              id="new-order-id"
-              value={newFeedbackForm.order_id}
-              onChange={(e) => handleFieldChange(e, 'new', 'order_id')}
-              className="feedbacks-form-select"
-              aria-label="Select order"
-              required
-            >
-              <option value="">Select Order</option>
-              {orders.map(order => (
-                <option key={order._id} value={order._id}>
-                  {order.acc_id?.username || 'N/A'} - {new Date(order.orderDate).toLocaleDateString()}
-                </option>
-              ))}
-            </select>
           </div>
-          <div className="feedbacks-form-group">
-            <label htmlFor="new-variant-id">Product Variant</label>
-            <select
-              id="new-variant-id"
-              value={newFeedbackForm.variant_id}
-              onChange={(e) => handleFieldChange(e, 'new', 'variant_id')}
-              className="feedbacks-form-select"
-              aria-label="Select variant"
-              required
-            >
-              <option value="">Select Variant</option>
-              {variants.map(variant => (
-                <option key={variant._id} value={variant._id}>
-                  {variant.pro_id?.pro_name || 'N/A'} - {variant.color_id?.color_name || 'N/A'} - {variant.size_id?.size_name || 'N/A'}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="feedbacks-form-group">
-            <label htmlFor="new-unit-price">Unit Price</label>
-            <input
-              id="new-unit-price"
-              type="number"
-              min="0"
-              step="0.01"
-              value={newFeedbackForm.UnitPrice}
-              onChange={(e) => handleFieldChange(e, 'new', 'UnitPrice')}
-              className="feedbacks-form-input"
-              aria-label="Unit price"
-              required
-            />
-          </div>
-          <div className="feedbacks-form-group">
-            <label htmlFor="new-quantity">Quantity</label>
-            <input
-              id="new-quantity"
-              type="number"
-              min="1"
-              value={newFeedbackForm.Quantity}
-              onChange={(e) => handleFieldChange(e, 'new', 'Quantity')}
-              className="feedbacks-form-input"
-              aria-label="Quantity"
-              required
-            />
-          </div>
-          <div className="feedbacks-form-group">
-            <label htmlFor="new-feedback">Feedback</label>
-            <textarea
-              id="new-feedback"
-              value={newFeedbackForm.feedback_details}
-              onChange={(e) => handleFieldChange(e, 'new', 'feedback_details')}
-              className="feedbacks-form-textarea"
-              aria-label="Feedback"
-              maxLength={500}
-              required
-            />
-          </div>
-          <div className="feedbacks-form-actions">
+          <div className="feedbacks-filter-actions">
             <button
-              onClick={handleCreateSubmit}
-              className="feedbacks-create-button"
-              aria-label="Create feedback"
-              disabled={loading}
-            >
-              Create
-            </button>
-            <button
-              onClick={toggleAddForm}
+              onClick={clearSearch}
               className="feedbacks-cancel-button"
-              aria-label="Cancel creating feedback"
-              disabled={loading}
+              aria-label="Clear search"
+              disabled={loading || !hasActiveFilters()}
             >
-              Cancel
+              Clear
             </button>
+            <div className="feedbacks-filter-summary">
+              Showing {startIndex + 1} to {Math.min(endIndex, feedbacks.length)} of {feedbacks.length} feedbacks
+            </div>
           </div>
         </div>
       )}
@@ -603,9 +538,9 @@ const Feedbacks = () => {
               </tr>
             </thead>
             <tbody>
-              {feedbacks.map((feedback, index) => (
+              {currentFeedbacks.map((feedback, index) => (
                 <tr key={feedback._id} className="feedbacks-table-row">
-                  <td>{index + 1}</td>
+                  <td>{startIndex + index + 1}</td>
                   <td>{feedback.order_id?.orderDate ? new Date(feedback.order_id.orderDate).toLocaleDateString() : 'N/A'}</td>
                   <td>{feedback.order_id?.acc_id?.username || 'N/A'}</td>
                   <td>
@@ -614,50 +549,10 @@ const Feedbacks = () => {
                     {feedback.variant_id?.size_id?.size_name || 'N/A'}
                   </td>
                   <td>
-                    {editingFeedbackId === feedback._id ? (
-                      <textarea
-                        value={editFormData.feedback_details}
-                        onChange={(e) => handleFieldChange(e, 'edit', 'feedback_details')}
-                        className="feedbacks-form-textarea"
-                        aria-label="Edit feedback"
-                        maxLength={500}
-                        required
-                      />
-                    ) : (
-                      feedback.feedback_details
-                    )}
+                    {feedback.feedback_details}
                   </td>
                   <td>
-                    {editingFeedbackId === feedback._id ? (
                       <div className="feedbacks-action-buttons">
-                        <button
-                          onClick={() => handleUpdateSubmit(feedback._id)}
-                          className="feedbacks-update-button"
-                          aria-label={`Update feedback ${feedback._id}`}
-                          disabled={loading || !editFormData.feedback_details}
-                        >
-                          Update
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="feedbacks-cancel-button"
-                          aria-label={`Cancel editing feedback ${feedback._id}`}
-                          disabled={loading}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="feedbacks-action-buttons">
-                        {(user?.role === 'admin' || user?.role === 'manager' || feedback.order_id?.acc_id?._id === user?._id) && (
-                          <button
-                            onClick={() => handleEditFeedback(feedback)}
-                            className="feedbacks-edit-button"
-                            aria-label={`Edit feedback ${feedback._id}`}
-                          >
-                            Edit
-                          </button>
-                        )}
                         {(user?.role === 'admin' || user?.role === 'manager' || feedback.order_id?.acc_id?._id === user?._id) && (
                           <button
                             onClick={() => deleteFeedback(feedback._id)}
@@ -668,12 +563,50 @@ const Feedbacks = () => {
                           </button>
                         )}
                       </div>
-                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {feedbacks.length > 0 && (
+        <div className="feedbacks-pagination">
+          <div className="feedbacks-pagination-info">
+            Showing {startIndex + 1} to {Math.min(endIndex, feedbacks.length)} of {feedbacks.length} feedbacks
+          </div>
+          <div className="feedbacks-pagination-controls">
+            <button
+              className="feedbacks-pagination-button"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              Previous
+            </button>
+            <div className="feedbacks-pagination-pages">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  className={`feedbacks-pagination-page ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => handlePageChange(page)}
+                  aria-label={`Page ${page}`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              className="feedbacks-pagination-button"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -6,7 +6,7 @@ import axios from 'axios';
 
 // API client with interceptors
 const apiClient = axios.create({
-  baseURL: (process.env.REACT_APP_API_URL || 'http://localhost:5000').replace(/\/$/, ''), // Remove trailing slash
+  baseURL: (process.env.REACT_APP_API_URL || 'http://localhost:5000').replace(/\/$/, ''),
   timeout: 10000,
 });
 
@@ -18,7 +18,7 @@ apiClient.interceptors.response.use(
                     status === 404 ? 'Resource not found' :
                     status >= 500 ? 'Server error - please try again later' :
                     'Network error - please check your connection';
-    return Promise.reject({ ...error, message });
+    return Promise.reject({ ...error, message, skipRetry: status === 400 });
   }
 );
 
@@ -26,12 +26,11 @@ apiClient.interceptors.response.use(
 const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
   for (let i = 0; i < retries; i++) {
     try {
-      console.log(`Fetching ${url}, attempt ${i + 1}`);
       const response = await apiClient.get(url, options);
       return response.data;
     } catch (error) {
       console.error(`Attempt ${i + 1} failed for ${url}:`, error.message);
-      if (i === retries - 1) throw error;
+      if (i === retries - 1 || error.skipRetry) throw error;
       await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
     }
   }
@@ -40,6 +39,7 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 const Products = () => {
   const { user, isAuthLoading } = useContext(AuthContext);
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [editingProductId, setEditingProductId] = useState(null);
@@ -59,6 +59,22 @@ const Products = () => {
     description: '',
     status_product: 'active',
   });
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    searchQuery: '',
+    categoryFilter: '',
+    statusFilter: '',
+    minPrice: '',
+    maxPrice: '',
+    hasImage: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(20);
+  
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,13 +84,99 @@ const Products = () => {
   // Status options
   const statusOptions = ['active', 'discontinued', 'out_of_stock'];
 
+  // Apply filters to products
+  const applyFilters = useCallback((productsList, filterSettings) => {
+    return productsList.filter(product => {
+      // Search query filter
+      if (filterSettings.searchQuery) {
+        const query = filterSettings.searchQuery.toLowerCase();
+        const productName = product.pro_name?.toLowerCase() || '';
+        const description = product.description?.toLowerCase() || '';
+        const status = product.status_product?.toLowerCase() || '';
+        const productId = product._id?.toLowerCase() || '';
+        
+        if (!productName.includes(query) && 
+            !description.includes(query) && 
+            !status.includes(query) && 
+            !productId.includes(query)) {
+          return false;
+        }
+      }
+
+      // Category filter
+      if (filterSettings.categoryFilter && product.cat_id?._id !== filterSettings.categoryFilter) {
+        return false;
+      }
+
+      // Status filter
+      if (filterSettings.statusFilter && product.status_product !== filterSettings.statusFilter) {
+        return false;
+      }
+
+      // Price range filter
+      if (filterSettings.minPrice && product.pro_price < parseFloat(filterSettings.minPrice)) {
+        return false;
+      }
+      if (filterSettings.maxPrice && product.pro_price > parseFloat(filterSettings.maxPrice)) {
+        return false;
+      }
+
+      // Image filter
+      if (filterSettings.hasImage === 'true' && (!product.imageURL || product.imageURL === '')) {
+        return false;
+      }
+      if (filterSettings.hasImage === 'false' && product.imageURL && product.imageURL !== '') {
+        return false;
+      }
+
+      return true;
+    });
+  }, []);
+
+  // Update filtered products when products or filters change
+  useEffect(() => {
+    setFilteredProducts(applyFilters(products, filters));
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [products, filters, applyFilters]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredProducts.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const currentProducts = filteredProducts.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Handle previous page
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  }, []);
+
+  // Handle next page
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
+
+  // Check if any filters are active
+  const hasActiveFilters = useCallback(() => {
+    return filters.searchQuery || 
+           filters.categoryFilter || 
+           filters.statusFilter || 
+           filters.minPrice || 
+           filters.maxPrice || 
+           filters.hasImage;
+  }, [filters]);
+
   // Auto-dismiss toast
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => {
         setToast(null);
-      }, 3000); // Toast disappears after 3 seconds
-      return () => clearTimeout(timer); // Cleanup on unmount or new toast
+      }, 3000);
+      return () => clearTimeout(timer);
     }
   }, [toast]);
 
@@ -125,6 +227,28 @@ const Products = () => {
     await fetchCategories();
     await fetchProducts();
   }, [fetchCategories, fetchProducts]);
+
+  // Handle filter changes
+  const handleFilterChange = useCallback((field, value) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setFilters({
+      searchQuery: '',
+      categoryFilter: '',
+      statusFilter: '',
+      minPrice: '',
+      maxPrice: '',
+      hasImage: ''
+    });
+  }, []);
+
+  // Toggle filter visibility
+  const toggleFilters = useCallback(() => {
+    setShowFilters(prev => !prev);
+  }, []);
 
   // Create product
   const createProduct = useCallback(async () => {
@@ -388,100 +512,229 @@ const Products = () => {
         </div>
       )}
 
-      <h1 className="products-title">Product Management</h1>
-
-      {/* Add Product Button */}
-      <div className="products-add-button-container">
-        <button
-          onClick={toggleAddForm}
-          className="products-add-button"
-          aria-label={showAddForm ? 'Cancel adding product' : 'Add new product'}
-        >
-          {showAddForm ? 'Cancel' : 'Add Product'}
-        </button>
+      <div className="products-header">
+        <h1 className="products-title">Product Management</h1>
+        <div className="products-header-actions">
+          <button
+            className="products-filter-toggle"
+            onClick={toggleFilters}
+            aria-label="Toggle filters"
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+          <button
+            onClick={toggleAddForm}
+            className="products-add-button"
+            aria-label={showAddForm ? 'Cancel adding product' : 'Add new product'}
+          >
+            {showAddForm ? 'Cancel Add' : 'Add Product'}
+          </button>
+        </div>
       </div>
+
+      {/* Filter Section */}
+      {showFilters && (
+        <div className="products-filters">
+          <h2 className="products-search-title">Search Products</h2>
+          <div className="products-filters-grid">
+            <div className="products-search-section">
+              {/* Search Query */}
+              <div className="products-filter-group">
+                <label htmlFor="searchQuery" className="products-filter-label">Search</label>
+                <input
+                  type="text"
+                  id="searchQuery"
+                  value={filters.searchQuery}
+                  onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
+                  placeholder="Search by product name, description, status..."
+                  className="products-filter-input"
+                />
+              </div>
+            </div>
+
+            <div className="products-filter-options">
+              {/* Category Filter */}
+              <div className="products-filter-group">
+                <label htmlFor="categoryFilter" className="products-filter-label">Category</label>
+                <select
+                  id="categoryFilter"
+                  value={filters.categoryFilter}
+                  onChange={(e) => handleFilterChange('categoryFilter', e.target.value)}
+                  className="products-filter-select"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map(category => (
+                    <option key={category._id} value={category._id}>
+                      {category.cat_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="products-filter-group">
+                <label htmlFor="statusFilter" className="products-filter-label">Status</label>
+                <select
+                  id="statusFilter"
+                  value={filters.statusFilter}
+                  onChange={(e) => handleFilterChange('statusFilter', e.target.value)}
+                  className="products-filter-select"
+                >
+                  <option value="">All Statuses</option>
+                  {statusOptions.map(status => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Price Range Filters */}
+              <div className="products-filter-group">
+                <label htmlFor="minPrice" className="products-filter-label">Min Price</label>
+                <input
+                  type="number"
+                  id="minPrice"
+                  value={filters.minPrice}
+                  onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="products-filter-input"
+                />
+              </div>
+
+              <div className="products-filter-group">
+                <label htmlFor="maxPrice" className="products-filter-label">Max Price</label>
+                <input
+                  type="number"
+                  id="maxPrice"
+                  value={filters.maxPrice}
+                  onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                  placeholder="999.99"
+                  step="0.01"
+                  min="0"
+                  className="products-filter-input"
+                />
+              </div>
+
+              {/* Image Filter */}
+              <div className="products-filter-group">
+                <label htmlFor="hasImage" className="products-filter-label">Image Status</label>
+                <select
+                  id="hasImage"
+                  value={filters.hasImage}
+                  onChange={(e) => handleFilterChange('hasImage', e.target.value)}
+                  className="products-filter-select"
+                >
+                  <option value="">All Products</option>
+                  <option value="true">With Image</option>
+                  <option value="false">Without Image</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="products-filter-actions">
+            <button
+              className="products-clear-filters"
+              onClick={clearFilters}
+              disabled={!hasActiveFilters()}
+              aria-label="Clear all filters"
+            >
+              Clear Filters
+            </button>
+            <div className="products-filter-summary">
+              Showing {startIndex + 1} to {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length} products
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Product Form */}
       {showAddForm && (
         <div className="products-add-form">
           <h2 className="products-form-title">Add New Product</h2>
-          <div className="products-form-group">
-            <label htmlFor="new-pro-name">Product Name</label>
-            <input
-              id="new-pro-name"
-              type="text"
-              value={newProductForm.pro_name}
-              onChange={(e) => handleNewProductFieldChange(e, 'pro_name')}
-              className="products-form-input"
-              aria-label="Product name"
-              required
-            />
+          <div className="products-form-grid">
+            <div className="products-form-group">
+              <label htmlFor="new-pro-name">Product Name *</label>
+              <input
+                id="new-pro-name"
+                type="text"
+                value={newProductForm.pro_name}
+                onChange={(e) => handleNewProductFieldChange(e, 'pro_name')}
+                className="products-form-input"
+                aria-label="Product name"
+                required
+              />
+            </div>
+            <div className="products-form-group">
+              <label htmlFor="new-cat-id">Category *</label>
+              <select
+                id="new-cat-id"
+                value={newProductForm.cat_id}
+                onChange={(e) => handleNewProductFieldChange(e, 'cat_id')}
+                className="products-form-select"
+                aria-label="Product category"
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map(category => (
+                  <option key={category._id} value={category._id}>
+                    {category.cat_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="products-form-group">
+              <label htmlFor="new-pro-price">Price *</label>
+              <input
+                id="new-pro-price"
+                type="number"
+                step="0.01"
+                value={newProductForm.pro_price}
+                onChange={(e) => handleNewProductFieldChange(e, 'pro_price')}
+                className="products-form-input"
+                aria-label="Product price"
+                required
+              />
+            </div>
+            <div className="products-form-group">
+              <label htmlFor="new-image-url">Image URL</label>
+              <input
+                id="new-image-url"
+                type="text"
+                value={newProductForm.imageURL}
+                onChange={(e) => handleNewProductFieldChange(e, 'imageURL')}
+                className="products-form-input"
+                aria-label="Product image URL"
+              />
+            </div>
+            <div className="products-form-group">
+              <label htmlFor="new-status-product">Status</label>
+              <select
+                id="new-status-product"
+                value={newProductForm.status_product}
+                onChange={(e) => handleNewProductFieldChange(e, 'status_product')}
+                className="products-form-select"
+                aria-label="Product status"
+              >
+                {statusOptions.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="products-form-group">
-            <label htmlFor="new-cat-id">Category</label>
-            <select
-              id="new-cat-id"
-              value={newProductForm.cat_id}
-              onChange={(e) => handleNewProductFieldChange(e, 'cat_id')}
-              className="products-form-select"
-              aria-label="Product category"
-              required
-            >
-              <option value="">Select Category</option>
-              {categories.map(category => (
-                <option key={category._id} value={category._id}>
-                  {category.cat_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="products-form-group">
-            <label htmlFor="new-pro-price">Price</label>
-            <input
-              id="new-pro-price"
-              type="number"
-              step="0.01"
-              value={newProductForm.pro_price}
-              onChange={(e) => handleNewProductFieldChange(e, 'pro_price')}
-              className="products-form-input"
-              aria-label="Product price"
-              required
-            />
-          </div>
-          <div className="products-form-group">
-            <label htmlFor="new-image-url">Image URL</label>
-            <input
-              id="new-image-url"
-              type="text"
-              value={newProductForm.imageURL}
-              onChange={(e) => handleNewProductFieldChange(e, 'imageURL')}
-              className="products-form-input"
-              aria-label="Product image URL"
-            />
-          </div>
-          <div className="products-form-group">
+          <div className="products-form-group products-description-group">
             <label htmlFor="new-description">Description</label>
             <textarea
               id="new-description"
               value={newProductForm.description}
               onChange={(e) => handleNewProductFieldChange(e, 'description')}
-              className="products-form-textarea"
+              className="products-form-textarea products-description-textarea"
               aria-label="Product description"
+              placeholder="Enter product description..."
             />
-          </div>
-          <div className="products-form-group">
-            <label htmlFor="new-status-product">Status</label>
-            <select
-              id="new-status-product"
-              value={newProductForm.status_product}
-              onChange={(e) => handleNewProductFieldChange(e, 'status_product')}
-              className="products-form-select"
-              aria-label="Product status"
-            >
-              {statusOptions.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
           </div>
           <div className="products-form-actions">
             <button
@@ -490,7 +743,7 @@ const Products = () => {
               aria-label="Create product"
               disabled={loading}
             >
-              Create
+              Create Product
             </button>
             <button
               onClick={toggleAddForm}
@@ -528,16 +781,9 @@ const Products = () => {
       )}
 
       {/* Products Table */}
-      {!loading && products.length === 0 && !error ? (
+      {!loading && filteredProducts.length === 0 && !error ? (
         <div className="products-empty" role="status">
-          <p>No products found.</p>
-          <button 
-            className="products-continue-shopping-button"
-            onClick={() => navigate('/')}
-            aria-label="Continue shopping"
-          >
-            Continue Shopping
-          </button>
+          <p>{products.length === 0 ? 'No products found.' : 'No products match the current filters.'}</p>
         </div>
       ) : (
         <div className="products-table-container">
@@ -551,14 +797,14 @@ const Products = () => {
                 <th>Image</th>
                 <th>Description</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {products.map((product, index) => (
+              {currentProducts.map((product, index) => (
                 <React.Fragment key={product._id}>
                   <tr className="products-table-row">
-                    <td>{index + 1}</td>
+                    <td>{startIndex + index + 1}</td>
                     <td>
                       {editingProductId === product._id ? (
                         <input
@@ -693,7 +939,7 @@ const Products = () => {
                             className="products-edit-button"
                             aria-label={`Edit product ${product._id}`}
                           >
-                            Update
+                            Edit
                           </button>
                           <button
                             onClick={() => deleteProduct(product._id)}
@@ -722,6 +968,47 @@ const Products = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {filteredProducts.length > 0 && (
+        <div className="products-pagination">
+          <div className="products-pagination-info">
+            Showing {startIndex + 1} to {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length} products
+          </div>
+          <div className="products-pagination-controls">
+            <button
+              className="products-pagination-button"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              Previous
+            </button>
+            
+            <div className="products-pagination-pages">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  className={`products-pagination-page ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => handlePageChange(page)}
+                  aria-label={`Page ${page}`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            
+            <button
+              className="products-pagination-button"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

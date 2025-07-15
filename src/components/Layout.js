@@ -6,20 +6,9 @@ import gashLogo from '../assets/image/gash-logo.svg';
 
 // Constants
 const DROPDOWN_CLOSE_DELAY = 150;
-const SEARCH_DEBOUNCE_DELAY = 300;
 const ERROR_TIMEOUT = 5000;
 
-// Custom hooks
-const useDebounce = (value, delay) => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
 
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-
-  return debouncedValue;
-};
 
 const useClickOutside = (ref, callback) => {
   useEffect(() => {
@@ -40,20 +29,14 @@ const Layout = ({ children }) => {
 
   // State
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState(null);
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Refs
   const dropdownRef = useRef(null);
-  const searchInputRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
   const sidebarRef = useRef(null);
-
-  // Debounced search
-  const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_DELAY);
 
   // Close dropdown and sidebar on click outside
   useClickOutside(dropdownRef, useCallback(() => {
@@ -83,7 +66,6 @@ const Layout = ({ children }) => {
       if (event.key === 'Escape') {
         setIsDropdownOpen(false);
         setIsSidebarOpen(false);
-        searchInputRef.current?.blur();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -117,35 +99,6 @@ const Layout = ({ children }) => {
     }
   }, [logout, navigate]);
 
-  const handleSearchSubmit = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (!searchQuery.trim()) {
-        setError('Please enter a search term.');
-        setTimeout(() => setError(null), ERROR_TIMEOUT);
-        return;
-      }
-
-      setIsSearching(true);
-      try {
-        const searchParams = new URLSearchParams({ q: searchQuery.trim() });
-        navigate(`/products?${searchParams.toString()}`);
-        searchInputRef.current?.blur();
-      } catch (err) {
-        console.error('Search error:', err);
-        setError('Search failed. Please try again.');
-        setTimeout(() => setError(null), ERROR_TIMEOUT);
-      } finally {
-        setIsSearching(false);
-      }
-    },
-    [searchQuery, navigate]
-  );
-
-  const handleSearchChange = useCallback((e) => {
-    setSearchQuery(e.target.value);
-  }, []);
-
   const handleLogoClick = useCallback(
     (e) => {
       e.preventDefault();
@@ -157,25 +110,6 @@ const Layout = ({ children }) => {
 
   const handleSidebarToggle = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
-  }, []);
-
-  // Clear search on non-products pages
-  useEffect(() => {
-    if (!location.pathname.includes('/products')) {
-      setSearchQuery('');
-    }
-  }, [location.pathname]);
-
-  // Focus search input on '/'
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (e.key === '/' && document.activeElement !== searchInputRef.current) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
   }, []);
 
   // Dropdown items
@@ -224,6 +158,19 @@ const Layout = ({ children }) => {
       {/* Navigation Bar */}
       <nav className="navbar" role="navigation" aria-label="Main navigation">
         <div className="navbar-container">
+          {/* Sidebar Toggle Button */}
+          {user && ['admin', 'manager'].includes(user.role) && (
+            <button
+              className="nav-button sidebar-toggle"
+              onClick={handleSidebarToggle}
+              aria-expanded={isSidebarOpen}
+              aria-label="Toggle admin sidebar"
+              type="button"
+            >
+              ☰
+            </button>
+          )}
+
           {/* Logo */}
           <Link
             to="/"
@@ -245,47 +192,8 @@ const Layout = ({ children }) => {
             />
           </Link>
 
-          {/* Search Bar */}
-          <form className="search-bar" onSubmit={handleSearchSubmit} role="search">
-            <input
-              ref={searchInputRef}
-              type="search"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              disabled={isSearching}
-              aria-label="Search products"
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              className="search-button"
-              disabled={isSearching || !searchQuery.trim()}
-              aria-label={isSearching ? 'Searching' : 'Search'}
-            >
-              {isSearching ? (
-                <span className="search-loading-spinner" aria-hidden="true" />
-              ) : (
-                '🔍'
-              )}
-            </button>
-          </form>
-
           {/* Navigation Actions */}
           <div className="nav-actions">
-            {/* Sidebar Toggle Button (visible on mobile) */}
-            {user && ['admin', 'manager'].includes(user.role) && (
-              <button
-                className="nav-button sidebar-toggle"
-                onClick={handleSidebarToggle}
-                aria-expanded={isSidebarOpen}
-                aria-label="Toggle admin sidebar"
-                type="button"
-              >
-                ☰
-              </button>
-            )}
-
             {/* Account Menu */}
             <div className="account-menu" ref={dropdownRef}>
               <button

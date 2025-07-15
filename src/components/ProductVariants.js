@@ -45,6 +45,7 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 const ProductVariants = () => {
   const { user, isAuthLoading } = useContext(AuthContext);
   const [variants, setVariants] = useState([]);
+  const [filteredVariants, setFilteredVariants] = useState([]);
   const [products, setProducts] = useState([]);
   const [colors, setColors] = useState([]);
   const [sizes, setSizes] = useState([]);
@@ -62,16 +63,110 @@ const ProductVariants = () => {
     size_id: "",
     image_id: "",
   });
-  const [searchParams, setSearchParams] = useState({
-    pro_id: "",
-    color_id: "",
-    size_id: "",
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    searchQuery: '',
+    productFilter: '',
+    colorFilter: '',
+    sizeFilter: '',
+    imageFilter: ''
   });
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(20);
+  
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
+
+  // Apply filters to variants
+  const applyFilters = useCallback((variantsList, filterSettings) => {
+    return variantsList.filter(variant => {
+      // Search query filter
+      if (filterSettings.searchQuery) {
+        const query = filterSettings.searchQuery.toLowerCase();
+        const productName = variant.pro_id?.pro_name?.toLowerCase() || '';
+        const colorName = variant.color_id?.color_name?.toLowerCase() || '';
+        const sizeName = variant.size_id?.size_name?.toLowerCase() || '';
+        const variantId = variant._id?.toLowerCase() || '';
+        
+        if (!productName.includes(query) && 
+            !colorName.includes(query) && 
+            !sizeName.includes(query) && 
+            !variantId.includes(query)) {
+          return false;
+        }
+      }
+
+      // Product filter
+      if (filterSettings.productFilter && variant.pro_id?._id !== filterSettings.productFilter) {
+        return false;
+      }
+
+      // Color filter
+      if (filterSettings.colorFilter && variant.color_id?._id !== filterSettings.colorFilter) {
+        return false;
+      }
+
+      // Size filter
+      if (filterSettings.sizeFilter && variant.size_id?._id !== filterSettings.sizeFilter) {
+        return false;
+      }
+
+      // Image filter
+      if (filterSettings.imageFilter) {
+        if (filterSettings.imageFilter === 'with_image' && !variant.image_id) {
+          return false;
+        }
+        if (filterSettings.imageFilter === 'without_image' && variant.image_id) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, []);
+
+  // Update filtered variants when variants or filters change
+  useEffect(() => {
+    setFilteredVariants(applyFilters(variants, filters));
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [variants, filters, applyFilters]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredVariants.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const currentVariants = filteredVariants.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Handle previous page
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  }, []);
+
+  // Handle next page
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
+
+  // Check if any filters are active
+  const hasActiveFilters = useCallback(() => {
+    return filters.searchQuery || 
+           filters.productFilter || 
+           filters.colorFilter || 
+           filters.sizeFilter || 
+           filters.imageFilter;
+  }, [filters]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -108,37 +203,26 @@ const ProductVariants = () => {
     }
   }, [user]);
 
-  // Search variants
-  const searchVariants = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const { pro_id, color_id, size_id } = searchParams;
+  // Handle filter changes
+  const handleFilterChange = useCallback((field, value) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+  }, []);
 
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No authentication token found");
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setFilters({
+      searchQuery: '',
+      productFilter: '',
+      colorFilter: '',
+      sizeFilter: '',
+      imageFilter: ''
+    });
+  }, []);
 
-      const query = new URLSearchParams();
-      if (pro_id) query.append("pro_id", pro_id);
-      if (color_id) query.append("color_id", color_id);
-      if (size_id) query.append("size_id", size_id);
-
-      const url = `/variants${query.toString() ? `?${query.toString()}` : ""}`;
-      console.log("Sending request to:", `${apiClient.defaults.baseURL}${url}`);
-      const response = await fetchWithRetry(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setVariants(Array.isArray(response) ? response : []);
-      if (response.length === 0) {
-        setToast({ type: "info", message: "No variants found for the given criteria" });
-      }
-    } catch (err) {
-      setError(err.message || "Failed to search variants");
-      console.error("Search variants error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchParams]);
+  // Toggle filter visibility
+  const toggleFilters = useCallback(() => {
+    setShowFilters(prev => !prev);
+  }, []);
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
@@ -247,7 +331,13 @@ const ProductVariants = () => {
       const response = await apiClient.post("/variants", newVariantForm, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setVariants((prev) => [...prev, response.data.variant]);
+      
+      // Fetch the newly created variant with populated data
+      const populatedVariant = await fetchWithRetry(`/variants/${response.data.variant._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      setVariants((prev) => [...prev, populatedVariant]);
       setToast({ type: "success", message: "Variant created successfully" });
       setNewVariantForm({
         pro_id: "",
@@ -284,16 +374,22 @@ const ProductVariants = () => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No authentication token found");
 
-      const response = await apiClient.put(
+      await apiClient.put(
         `/variants/${variantId}`,
         updatedData,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      
+      // Fetch the updated variant with populated data
+      const populatedVariant = await fetchWithRetry(`/variants/${variantId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
       setVariants((prev) =>
         prev.map((variant) =>
-          variant._id === variantId ? response.data.variant : variant
+          variant._id === variantId ? populatedVariant : variant
         )
       );
       setToast({ type: "success", message: "Variant updated successfully" });
@@ -398,102 +494,31 @@ const ProductVariants = () => {
   }, []);
 
   // Handle field change for edit form
-  const handleEditFieldChange = useCallback((e, field) => {
-    setEditFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  const handleEditFieldChange = useCallback((field, value) => {
+    setEditFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   // Handle field change for new variant form
-  const handleNewVariantFieldChange = useCallback((e, field) => {
-    setNewVariantForm((prev) => ({ ...prev, [field]: e.target.value }));
+  const handleNewVariantFieldChange = useCallback((field, value) => {
+    setNewVariantForm((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  // Handle search field change
-  const handleSearchFieldChange = useCallback((e, field) => {
-    setSearchParams((prev) => ({ ...prev, [field]: e.target.value }));
-  }, []);
+  // Submit edit form
+  const handleEditSubmit = useCallback(() => {
+    updateVariant(editingVariantId, editFormData);
+  }, [editingVariantId, editFormData, updateVariant]);
 
-  // Submit updated fields
-  const handleUpdateSubmit = useCallback(
-    (variantId) => {
-      updateVariant(variantId, editFormData);
-    },
-    [editFormData, updateVariant]
-  );
-
-  // Submit new variant
-  const handleCreateSubmit = useCallback(() => {
-    createVariant();
-  }, [createVariant]);
-
-  // Toggle add variant form
-  const toggleAddForm = useCallback(() => {
-    setShowAddForm((prev) => !prev);
-    setNewVariantForm({
-      pro_id: "",
-      color_id: "",
-      size_id: "",
-      image_id: "",
-    });
-    setError("");
-  }, []);
-
-  // Clear search parameters
-  const clearSearch = useCallback(() => {
-    setSearchParams({ pro_id: "", color_id: "", size_id: "" });
-    fetchVariants();
-  }, [fetchVariants]);
-
-  // Retry fetching data
+  // Retry fetching variants
   const handleRetry = useCallback(() => {
     fetchVariants();
-    fetchProducts();
-    fetchColors();
-    fetchSizes();
-    fetchImages();
-  }, [fetchVariants, fetchProducts, fetchColors, fetchSizes, fetchImages]);
-
-  // Get product name by ID
-  const getProductName = useCallback(
-    (proId) => {
-      const product = products.find((p) => p._id === proId);
-      return product?.pro_name || "N/A";
-    },
-    [products]
-  );
-
-  // Get color name by ID
-  const getColorName = useCallback(
-    (colorId) => {
-      const color = colors.find((c) => c._id === colorId);
-      return color?.color_name || "N/A";
-    },
-    [colors]
-  );
-
-  // Get size name by ID
-  const getSizeName = useCallback(
-    (sizeId) => {
-      const size = sizes.find((s) => s._id === sizeId);
-      return size?.size_name || "N/A";
-    },
-    [sizes]
-  );
-
-  // Get image URL by ID
-  const getImageUrl = useCallback(
-    (imageId) => {
-      const image = images.find((i) => i._id === imageId);
-      return image?.imageURL || "";
-    },
-    [images]
-  );
+  }, [fetchVariants]);
 
   // Show loading state while auth is being verified
   if (isAuthLoading) {
     return (
-      <div className="variants-container">
-        <div className="variants-loading" role="status" aria-live="polite">
-          <div className="variants-progress-bar"></div>
+      <div className="product-variants-container">
+        <div className="product-variants-loading" role="status" aria-live="true">
+          <div className="product-variants-loading-spinner"></div>
           <p>Verifying authentication...</p>
         </div>
       </div>
@@ -501,123 +526,190 @@ const ProductVariants = () => {
   }
 
   return (
-    <div className="variants-container">
+    <div className="product-variants-container">
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`variants-toast ${
+          className={`product-variants-toast ${
             toast.type === "success"
-              ? "variants-toast-success"
-              : toast.type === "info"
-              ? "variants-toast-info"
-              : "variants-toast-error"
+              ? "product-variants-toast-success"
+              : toast.type === "error"
+              ? "product-variants-toast-error"
+              : "product-variants-toast-info"
           }`}
           role="alert"
-          aria-live="assertive"
         >
           {toast.message}
         </div>
       )}
 
-      <h1 className="variants-title">Product Variants</h1>
-
-      {/* Search Form */}
-      <div className="variants-search-form">
-        <h2 className="variants-form-title">Search Product Variants</h2>
-        <div className="variants-form-group">
-          <label htmlFor="search-pro-id">Product</label>
-          <select
-            id="search-pro-id"
-            value={searchParams.pro_id}
-            onChange={(e) => handleSearchFieldChange(e, "pro_id")}
-            className="variants-form-select"
-            aria-label="Product"
+      <div className="product-variants-header">
+        <h1 className="product-variants-title">Product Variants Management</h1>
+        <div className="product-variants-header-actions">
+          <button
+            className="product-variants-filter-toggle"
+            onClick={toggleFilters}
+            aria-label="Toggle filters"
           >
-            <option value="">Select Product</option>
-            {products.map((product) => (
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+          <button
+            className="product-variants-add-button"
+            onClick={() => setShowAddForm(!showAddForm)}
+            aria-label="Add new variant"
+          >
+            {showAddForm ? "Cancel Add" : "Add Variant"}
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Section */}
+      {showFilters && (
+        <div className="product-variants-filters">
+          <h2 className="product-variants-search-title">Search Product Variants</h2>
+          <div className="product-variants-filters-grid">
+            <div className="product-variants-search-section">
+              {/* Search Query */}
+              <div className="product-variants-filter-group">
+                <label htmlFor="searchQuery" className="product-variants-filter-label">Search</label>
+                <input
+                  type="text"
+                  id="searchQuery"
+                  value={filters.searchQuery}
+                  onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
+                  placeholder="Search by product name, color, size..."
+                  className="product-variants-filter-input"
+                />
+              </div>
+            </div>
+
+            <div className="product-variants-filter-options">
+              {/* Product Filter */}
+              <div className="product-variants-filter-group">
+                <label htmlFor="productFilter" className="product-variants-filter-label">Product</label>
+          <select
+                  id="productFilter"
+                  value={filters.productFilter}
+                  onChange={(e) => handleFilterChange('productFilter', e.target.value)}
+                  className="product-variants-filter-select"
+          >
+                  <option value="">All Products</option>
+                  {products.map(product => (
               <option key={product._id} value={product._id}>
                 {product.pro_name}
               </option>
             ))}
           </select>
         </div>
-        <div className="variants-form-group">
-          <label htmlFor="search-color-id">Color</label>
+
+              {/* Color Filter */}
+              <div className="product-variants-filter-group">
+                <label htmlFor="colorFilter" className="product-variants-filter-label">Color</label>
           <select
-            id="search-color-id"
-            value={searchParams.color_id}
-            onChange={(e) => handleSearchFieldChange(e, "color_id")}
-            className="variants-form-select"
-            aria-label="Color"
+                  id="colorFilter"
+                  value={filters.colorFilter}
+                  onChange={(e) => handleFilterChange('colorFilter', e.target.value)}
+                  className="product-variants-filter-select"
           >
-            <option value="">Select Color</option>
-            {colors.map((color) => (
+                  <option value="">All Colors</option>
+                  {colors.map(color => (
               <option key={color._id} value={color._id}>
                 {color.color_name}
               </option>
             ))}
           </select>
         </div>
-        <div className="variants-form-group">
-          <label htmlFor="search-size-id">Size</label>
+
+              {/* Size Filter */}
+              <div className="product-variants-filter-group">
+                <label htmlFor="sizeFilter" className="product-variants-filter-label">Size</label>
           <select
-            id="search-size-id"
-            value={searchParams.size_id}
-            onChange={(e) => handleSearchFieldChange(e, "size_id")}
-            className="variants-form-select"
-            aria-label="Size"
+                  id="sizeFilter"
+                  value={filters.sizeFilter}
+                  onChange={(e) => handleFilterChange('sizeFilter', e.target.value)}
+                  className="product-variants-filter-select"
           >
-            <option value="">Select Size</option>
-            {sizes.map((size) => (
+                  <option value="">All Sizes</option>
+                  {sizes.map(size => (
               <option key={size._id} value={size._id}>
                 {size.size_name}
               </option>
             ))}
           </select>
         </div>
-        <div className="variants-form-actions">
+
+              {/* Image Filter */}
+              <div className="product-variants-filter-group">
+                <label htmlFor="imageFilter" className="product-variants-filter-label">Image Status</label>
+                <select
+                  id="imageFilter"
+                  value={filters.imageFilter}
+                  onChange={(e) => handleFilterChange('imageFilter', e.target.value)}
+                  className="product-variants-filter-select"
+                >
+                  <option value="">All Variants</option>
+                  <option value="with_image">With Image</option>
+                  <option value="without_image">Without Image</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+                    <div className="product-variants-filter-actions">
           <button
-            onClick={searchVariants}
-            className="variants-create-button"
-            aria-label="Search variants"
-            disabled={loading}
+              className="product-variants-clear-filters"
+              onClick={clearFilters}
+              disabled={!hasActiveFilters()}
+              aria-label="Clear all filters"
           >
-            Search
+              Clear Filters
           </button>
-          <button
-            onClick={clearSearch}
-            className="variants-cancel-button"
-            aria-label="Clear search"
-            disabled={loading}
-          >
-            Clear
-          </button>
+            <div className="product-variants-filter-summary">
+              Showing {startIndex + 1} to {Math.min(endIndex, filteredVariants.length)} of {filteredVariants.length} variants
         </div>
       </div>
+        </div>
+      )}
 
-      {/* Add Variant Button */}
-      <div className="variants-add-button-container">
+      {/* Error Display */}
+      {error && (
+        <div className="product-variants-error" role="alert" aria-live="true">
+          <span className="product-variants-error-icon">⚠</span>
+          <span>{error}</span>
         <button
-          onClick={toggleAddForm}
-          className="variants-add-button"
-          aria-label={showAddForm ? "Cancel adding variant" : "Add new variant"}
+            className="product-variants-retry-button"
+            onClick={handleRetry}
+            aria-label="Retry loading variants"
         >
-          {showAddForm ? "Cancel" : "Add Variant"}
+            Retry
         </button>
       </div>
+      )}
 
-      {/* Add Variant Form */}
+      {/* Loading State */}
+      {loading && (
+        <div className="product-variants-loading" role="status" aria-live="true">
+          <div className="product-variants-loading-spinner"></div>
+          <p>Loading variants...</p>
+        </div>
+      )}
+
+      {/* Add New Variant Form */}
       {showAddForm && (
-        <div className="variants-add-form">
-          <h2 className="variants-form-title">Add New Variant</h2>
-          <div className="variants-form-group">
-            <label htmlFor="new-pro-id">Product</label>
+        <div className="product-variants-add-form">
+          <h2 className="product-variants-add-title">Add New Variant</h2>
+          <div className="product-variants-form-grid">
+            <div className="product-variants-form-group">
+              <label htmlFor="new-pro-id" className="product-variants-form-label">
+                Product *
+              </label>
             <select
               id="new-pro-id"
               value={newVariantForm.pro_id}
-              onChange={(e) => handleNewVariantFieldChange(e, "pro_id")}
-              className="variants-form-select"
-              aria-label="Product"
+                onChange={(e) =>
+                  handleNewVariantFieldChange("pro_id", e.target.value)
+                }
+                className="product-variants-form-select"
               required
             >
               <option value="">Select Product</option>
@@ -628,14 +720,18 @@ const ProductVariants = () => {
               ))}
             </select>
           </div>
-          <div className="variants-form-group">
-            <label htmlFor="new-color-id">Color</label>
+
+            <div className="product-variants-form-group">
+              <label htmlFor="new-color-id" className="product-variants-form-label">
+                Color *
+              </label>
             <select
               id="new-color-id"
               value={newVariantForm.color_id}
-              onChange={(e) => handleNewVariantFieldChange(e, "color_id")}
-              className="variants-form-select"
-              aria-label="Color"
+                onChange={(e) =>
+                  handleNewVariantFieldChange("color_id", e.target.value)
+                }
+                className="product-variants-form-select"
               required
             >
               <option value="">Select Color</option>
@@ -646,14 +742,18 @@ const ProductVariants = () => {
               ))}
             </select>
           </div>
-          <div className="variants-form-group">
-            <label htmlFor="new-size-id">Size</label>
+
+            <div className="product-variants-form-group">
+              <label htmlFor="new-size-id" className="product-variants-form-label">
+                Size *
+              </label>
             <select
               id="new-size-id"
               value={newVariantForm.size_id}
-              onChange={(e) => handleNewVariantFieldChange(e, "size_id")}
-              className="variants-form-select"
-              aria-label="Size"
+                onChange={(e) =>
+                  handleNewVariantFieldChange("size_id", e.target.value)
+                }
+                className="product-variants-form-select"
               required
             >
               <option value="">Select Size</option>
@@ -664,37 +764,43 @@ const ProductVariants = () => {
               ))}
             </select>
           </div>
-          <div className="variants-form-group">
-            <label htmlFor="new-image-id">Image</label>
+
+            <div className="product-variants-form-group">
+              <label htmlFor="new-image-id" className="product-variants-form-label">
+                Image
+              </label>
             <select
               id="new-image-id"
               value={newVariantForm.image_id}
-              onChange={(e) => handleNewVariantFieldChange(e, "image_id")}
-              className="variants-form-select"
-              aria-label="Image"
+                onChange={(e) =>
+                  handleNewVariantFieldChange("image_id", e.target.value)
+                }
+                className="product-variants-form-select"
             >
               <option value="">Select Image (Optional)</option>
               {images.map((image) => (
                 <option key={image._id} value={image._id}>
-                  {image.imageURL || `Image ${image._id}`}
+                    {image.imageURL}
                 </option>
               ))}
             </select>
           </div>
-          <div className="variants-form-actions">
+          </div>
+
+          <div className="product-variants-form-actions">
             <button
-              onClick={handleCreateSubmit}
-              className="variants-create-button"
-              aria-label="Create variant"
+              onClick={createVariant}
+              className="product-variants-submit-button"
               disabled={loading}
+              aria-label="Create variant"
             >
-              Create
+              Create Variant
             </button>
             <button
-              onClick={toggleAddForm}
-              className="variants-cancel-button"
-              aria-label="Cancel creating variant"
+              onClick={() => setShowAddForm(false)}
+              className="product-variants-cancel-button"
               disabled={loading}
+              aria-label="Cancel adding variant"
             >
               Cancel
             </button>
@@ -702,68 +808,38 @@ const ProductVariants = () => {
         </div>
       )}
 
-      {/* Error Display */}
-      {error && (
-        <div className="variants-error" role="alert" aria-live="assertive">
-          <span className="variants-error-icon">⚠</span>
-          <span>{error}</span>
-          <button
-            className="variants-retry-button"
-            onClick={handleRetry}
-            aria-label="Retry loading variants"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="variants-loading" role="status" aria-live="polite">
-          <div className="variants-progress-bar"></div>
-          <p>Loading variants...</p>
-        </div>
-      )}
-
       {/* Variants Table */}
-      {!loading && variants.length === 0 && !error ? (
-        <div className="variants-empty" role="status">
-          <p>No variants found.</p>
-          <button
-            className="variants-continue-shopping-button"
-            onClick={() => navigate("/")}
-            aria-label="Continue shopping"
-          >
-            Continue Shopping
-          </button>
+      {!loading && filteredVariants.length === 0 && !error ? (
+        <div className="product-variants-empty" role="status">
+          <p>{variants.length === 0 ? 'No variants found.' : 'No variants match the current filters.'}</p>
         </div>
       ) : (
-        <div className="variants-table-container">
-          <table className="variants-table">
+        <div className="product-variants-table-container">
+          <table className="product-variants-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Product Name</th>
+                <th>Product</th>
                 <th>Color</th>
                 <th>Size</th>
                 <th>Image</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {variants.map((variant, index) => (
-                <tr key={variant._id} className="variants-table-row">
-                  <td>{index + 1}</td>
+              {currentVariants.map((variant, index) => (
+                <tr key={variant._id} className="product-variants-table-row">
+                  <td>{startIndex + index + 1}</td>
                   <td>
                     {editingVariantId === variant._id ? (
                       <select
                         value={editFormData.pro_id}
-                        onChange={(e) => handleEditFieldChange(e, "pro_id")}
-                        className="variants-field-select"
+                        onChange={(e) =>
+                          handleEditFieldChange("pro_id", e.target.value)
+                        }
+                        className="product-variants-edit-select"
                         aria-label="Product"
-                        required
                       >
-                        <option value="">Select Product</option>
                         {products.map((product) => (
                           <option key={product._id} value={product._id}>
                             {product.pro_name}
@@ -771,21 +847,19 @@ const ProductVariants = () => {
                         ))}
                       </select>
                     ) : (
-                      variant.pro_id?.pro_name ||
-                      getProductName(variant.pro_id) ||
-                      "N/A"
+                      variant.pro_id?.pro_name || "N/A"
                     )}
                   </td>
                   <td>
                     {editingVariantId === variant._id ? (
                       <select
                         value={editFormData.color_id}
-                        onChange={(e) => handleEditFieldChange(e, "color_id")}
-                        className="variants-field-select"
+                        onChange={(e) =>
+                          handleEditFieldChange("color_id", e.target.value)
+                        }
+                        className="product-variants-edit-select"
                         aria-label="Color"
-                        required
                       >
-                        <option value="">Select Color</option>
                         {colors.map((color) => (
                           <option key={color._id} value={color._id}>
                             {color.color_name}
@@ -793,21 +867,19 @@ const ProductVariants = () => {
                         ))}
                       </select>
                     ) : (
-                      variant.color_id?.color_name ||
-                      getColorName(variant.color_id) ||
-                      "N/A"
+                      variant.color_id?.color_name || "N/A"
                     )}
                   </td>
                   <td>
                     {editingVariantId === variant._id ? (
                       <select
                         value={editFormData.size_id}
-                        onChange={(e) => handleEditFieldChange(e, "size_id")}
-                        className="variants-field-select"
+                        onChange={(e) =>
+                          handleEditFieldChange("size_id", e.target.value)
+                        }
+                        className="product-variants-edit-select"
                         aria-label="Size"
-                        required
                       >
-                        <option value="">Select Size</option>
                         {sizes.map((size) => (
                           <option key={size._id} value={size._id}>
                             {size.size_name}
@@ -815,63 +887,50 @@ const ProductVariants = () => {
                         ))}
                       </select>
                     ) : (
-                      variant.size_id?.size_name ||
-                      getSizeName(variant.size_id) ||
-                      "N/A"
+                      variant.size_id?.size_name || "N/A"
                     )}
                   </td>
                   <td>
                     {editingVariantId === variant._id ? (
                       <select
                         value={editFormData.image_id}
-                        onChange={(e) => handleEditFieldChange(e, "image_id")}
-                        className="variants-field-select"
+                        onChange={(e) =>
+                          handleEditFieldChange("image_id", e.target.value)
+                        }
+                        className="product-variants-edit-select"
                         aria-label="Image"
                       >
-                        <option value="">Select Image (Optional)</option>
+                        <option value="">No Image</option>
                         {images.map((image) => (
                           <option key={image._id} value={image._id}>
-                            {image.imageURL || `Image ${image._id}`}
+                            {image.imageURL}
                           </option>
                         ))}
                       </select>
-                    ) : variant.image_id?.imageURL ||
-                      getImageUrl(variant.image_id) ? (
+                    ) : variant.image_id?.imageURL ? (
                       <img
-                        src={
-                          variant.image_id?.imageURL ||
-                          getImageUrl(variant.image_id)
-                        }
-                        alt={variant.pro_id?.pro_name || "Product Variant"}
-                        className="variants-image"
-                        onError={(e) => {
-                          e.target.alt = "Image not available";
-                          e.target.style.opacity = "0.5";
-                        }}
+                        src={variant.image_id.imageURL}
+                        alt="Product variant"
+                        className="product-variants-image"
                       />
                     ) : (
-                      "N/A"
+                      "No Image"
                     )}
                   </td>
                   <td>
                     {editingVariantId === variant._id ? (
-                      <div className="variants-action-buttons">
+                      <div className="product-variants-action-buttons">
                         <button
-                          onClick={() => handleUpdateSubmit(variant._id)}
-                          className="variants-update-button"
+                          onClick={handleEditSubmit}
+                          className="product-variants-update-button"
                           aria-label={`Update variant ${variant._id}`}
-                          disabled={
-                            loading ||
-                            !editFormData.pro_id ||
-                            !editFormData.color_id ||
-                            !editFormData.size_id
-                          }
+                          disabled={loading}
                         >
                           Update
                         </button>
                         <button
                           onClick={handleCancelEdit}
-                          className="variants-cancel-button"
+                          className="product-variants-cancel-button"
                           aria-label={`Cancel editing variant ${variant._id}`}
                           disabled={loading}
                         >
@@ -879,17 +938,17 @@ const ProductVariants = () => {
                         </button>
                       </div>
                     ) : (
-                      <div className="variants-action-buttons">
+                      <div className="product-variants-action-buttons">
                         <button
                           onClick={() => handleEditVariant(variant)}
-                          className="variants-edit-button"
+                          className="product-variants-edit-button"
                           aria-label={`Edit variant ${variant._id}`}
                         >
-                          Update
+                          Edit
                         </button>
                         <button
                           onClick={() => deleteVariant(variant._id)}
-                          className="variants-delete-button"
+                          className="product-variants-delete-button"
                           aria-label={`Delete variant ${variant._id}`}
                         >
                           Delete
@@ -901,6 +960,47 @@ const ProductVariants = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {filteredVariants.length > 0 && (
+        <div className="product-variants-pagination">
+          <div className="product-variants-pagination-info">
+            Showing {startIndex + 1} to {Math.min(endIndex, filteredVariants.length)} of {filteredVariants.length} variants
+          </div>
+          <div className="product-variants-pagination-controls">
+            <button
+              className="product-variants-pagination-button"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              Previous
+            </button>
+            
+            <div className="product-variants-pagination-pages">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  className={`product-variants-pagination-page ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => handlePageChange(page)}
+                  aria-label={`Page ${page}`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            
+            <button
+              className="product-variants-pagination-button"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>
