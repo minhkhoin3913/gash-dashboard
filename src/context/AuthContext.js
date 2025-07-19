@@ -6,6 +6,7 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const navigate = useNavigate();
 
   // Simple session expiration handler
@@ -32,6 +33,7 @@ export const AuthProvider = ({ children }) => {
       if (timeElapsed >= sessionDuration) {
         // Session already expired
         handleSessionExpired();
+        setIsAuthLoading(false);
       } else {
         // Session still valid, set user and create timer for remaining time
         setUser(JSON.parse(storedUser));
@@ -40,7 +42,10 @@ export const AuthProvider = ({ children }) => {
         setTimeout(() => {
           handleSessionExpired();
         }, remainingTime);
+        setIsAuthLoading(false);
       }
+    } else {
+      setIsAuthLoading(false);
     }
   }, []);
 
@@ -135,7 +140,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, isAuthLoading }}>
       {children}
     </AuthContext.Provider>
   );

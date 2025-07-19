@@ -18,13 +18,19 @@ import Accounts from "./components/Accounts";
 import Categories from "./components/Categories";
 import Feedbacks from "./components/Feedbacks";
 import ImportBills from "./components/ImportBills";
+import Statistics from "./components/Statistics";
 
 import Layout from "./components/Layout";
 
 // ProtectedRoute component to restrict access to admin/manager roles
 const ProtectedRoute = ({ children }) => {
-  const { user } = React.useContext(AuthContext);
+  const { user, isAuthLoading } = React.useContext(AuthContext);
   const location = useLocation();
+
+  if (isAuthLoading) {
+    // Optionally, show a spinner or null while loading
+    return null;
+  }
 
   // Check if user is authenticated and has admin or manager role
   if (!user || !["admin", "manager"].includes(user.role)) {
@@ -42,6 +48,14 @@ const App = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Statistics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/products"
               element={
                 <ProtectedRoute>
@@ -54,6 +68,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <Feedbacks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/statistics"
+              element={
+                <ProtectedRoute>
+                  <Statistics />
                 </ProtectedRoute>
               }
             />

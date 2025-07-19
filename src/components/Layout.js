@@ -102,7 +102,7 @@ const Layout = ({ children }) => {
   const handleLogoClick = useCallback(
     (e) => {
       e.preventDefault();
-      navigate('/orders');
+      navigate('/');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     [navigate]
@@ -133,6 +133,7 @@ const Layout = ({ children }) => {
       { label: 'Product Specification', to: '/specifications' },
       { label: 'Product Variant', to: '/variants' },
       { label: 'Import Bills', to: '/imports' },
+      { label: 'Statistics', to: '/statistics' },
     ],
     []
   );
