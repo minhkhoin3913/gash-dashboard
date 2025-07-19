@@ -100,7 +100,14 @@ const Feedbacks = () => {
       const response = await fetchWithRetry(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setFeedbacks(Array.isArray(response) ? response.filter(detail => detail.feedback_details) : []);
+      // Sort feedbacks by order date descending (latest first)
+      let sortedFeedbacks = Array.isArray(response) ? response.filter(detail => detail.feedback_details) : [];
+      sortedFeedbacks.sort((a, b) => {
+        const dateA = a.order_id?.orderDate ? new Date(a.order_id.orderDate) : new Date(0);
+        const dateB = b.order_id?.orderDate ? new Date(b.order_id.orderDate) : new Date(0);
+        return dateB - dateA;
+      });
+      setFeedbacks(sortedFeedbacks);
       if (response.length === 0) {
         setToast({ type: 'info', message: 'No feedback found for the given criteria' });
       }
@@ -533,7 +540,8 @@ const Feedbacks = () => {
                 <th>Order Date</th>
                 <th>Username</th>
                 <th>Product</th>
-                <th>Feedback</th>
+                <th>Order Feedback</th>
+                <th>Product Feedback</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -547,6 +555,9 @@ const Feedbacks = () => {
                     {feedback.variant_id?.pro_id?.pro_name || 'N/A'} - 
                     {feedback.variant_id?.color_id?.color_name || 'N/A'} - 
                     {feedback.variant_id?.size_id?.size_name || 'N/A'}
+                  </td>
+                  <td>
+                    {feedback.order_id?.feedback_order || 'None'}
                   </td>
                   <td>
                     {feedback.feedback_details}
