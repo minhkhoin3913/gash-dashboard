@@ -121,7 +121,7 @@ const Accounts = () => {
       const token = localStorage.getItem('token');
       const response = await apiClient.post('/accounts', {
         username, name, email, phone, address, password,
-        image: image || 'https://i.redd.it/1to4yvt3i88c1.jpg',
+        image: image || 'http://localhost:4000/default-pfp.jpg',
         role, acc_status,
       }, {
         headers: { Authorization: `Bearer ${token}` },
@@ -681,7 +681,7 @@ const Accounts = () => {
                         alt={account.username}
                         className="accounts-image"
                         onError={(e) => {
-                          e.target.src = 'https://i.redd.it/1to4yvt3i88c1.jpg';
+                          e.target.src = 'http://localhost:4000/default-pfp.jpg';
                           e.target.alt = 'Image not available';
                         }}
                       />

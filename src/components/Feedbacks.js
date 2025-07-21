@@ -108,6 +108,7 @@ const Feedbacks = () => {
         return dateB - dateA;
       });
       setFeedbacks(sortedFeedbacks);
+      console.log('Fetched feedbacks:', sortedFeedbacks); // <-- Add this line
       if (response.length === 0) {
         setToast({ type: 'info', message: 'No feedback found for the given criteria' });
       }

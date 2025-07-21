@@ -500,10 +500,10 @@ const Carts = () => {
                         required
                       />
                     ) : (
-                      `$${cart.pro_price.toFixed(2)}`
+                      new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cart.pro_price)
                     )}
                   </td>
-                  <td>${cart.Total_price.toFixed(2)}</td>
+                  <td>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cart.Total_price)}</td>
                   <td>
                     {editingCartId === cart._id ? (
                       <div className="carts-action-buttons">

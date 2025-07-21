@@ -118,7 +118,7 @@ const Orders = () => {
       const response = await fetchWithRetry(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setOrders(Array.isArray(response) ? response : []);
+      setOrders(Array.isArray(response) ? response.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)) : []);
       setCurrentPage(1); // Reset to first page on new fetch
     } catch (err) {
       setError(err.message || 'Failed to load orders');
@@ -244,7 +244,7 @@ const Orders = () => {
   // Format price
   const formatPrice = useCallback((price) => {
     if (typeof price !== 'number' || isNaN(price)) return 'N/A';
-    return `$${price.toFixed(2)}`;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   }, []);
 
   // Show loading state while auth is being verified
