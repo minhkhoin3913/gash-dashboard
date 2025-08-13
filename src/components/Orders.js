@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import '../styles/Orders.css';
 import axios from 'axios';
+import { useRef } from 'react';
+import { io } from 'socket.io-client';
 
 // API client with interceptors
 const apiClient = axios.create({
@@ -69,6 +71,7 @@ const Orders = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
+  const socketRef = useRef(null);
 
   // Status options
   const orderStatusOptions = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
@@ -184,6 +187,29 @@ const Orders = () => {
       fetchOrders();
     }
   }, [user, isAuthLoading, navigate, fetchOrders]);
+
+  // Real-time order status updates
+  useEffect(() => {
+    if (!user?._id) return;
+    if (!socketRef.current) {
+      socketRef.current = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
+        transports: ['websocket'],
+        withCredentials: true,
+      });
+    }
+    const socket = socketRef.current;
+    // Listen for order updates (any order change)
+    const handleOrderUpdated = (data) => {
+      // Optionally, filter by userId if you only want to update for certain users
+      fetchOrders();
+    };
+    socket.on('orderUpdated', handleOrderUpdated);
+    return () => {
+      socket.off('orderUpdated', handleOrderUpdated);
+      // Optionally disconnect socket on unmount
+      // socket.disconnect();
+    };
+  }, [user, fetchOrders]);
 
   // Fetch order details when selectedOrderId changes
   const fetchOrderDetails = useCallback(async () => {

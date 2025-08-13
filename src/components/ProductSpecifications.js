@@ -131,7 +131,7 @@ const ProductSpecifications = () => {
       const response = await fetchWithRetry('/products', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setProducts(Array.isArray(response.data) ? response.data : []);
+      setProducts(Array.isArray(response) ? response : []);
     } catch (err) {
       setError(err.message || 'Failed to load products');
       console.error('Fetch products error:', err);

@@ -196,7 +196,7 @@ const Statistics = () => {
 
   // Format currency
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
   };
 
   // Only keep revenueStats, orderStats, revenueByWeek, revenueByMonth, revenueByYear
@@ -259,7 +259,7 @@ const Statistics = () => {
     scales: {
       y: {
         beginAtZero: true,
-        title: { display: true, text: 'Revenue ($)', color: '#0F1111' }
+        title: { display: true, text: 'Revenue (₫)', color: '#0F1111' }
       },
       x: {
         title: {

@@ -22,7 +22,7 @@
   margin: 16px auto;
   padding: 16px;
   background-color: var(--amazon-bg);
-  /* font-family: Arial, sans-serif; */
+  
   min-height: 400px; /* Adjusted for content */
   display: flex;
   flex-direction: column; /* Changed to column to stack title and content */
