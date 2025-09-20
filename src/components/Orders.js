@@ -1,25 +1,54 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
-import '../styles/Orders.css';
-import axios from 'axios';
-import { useRef } from 'react';
-import { io } from 'socket.io-client';
+import React, { useState, useEffect, useContext, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import "../styles/Orders.css";
+import axios from "axios";
+import { useRef } from "react";
+import { io } from "socket.io-client";
+
+// Helper to determine which order status options should be enabled for update
+const getOrderStatusOptionDisabled = (currentStatus, optionValue) => {
+  // Only allow valid transitions
+  // If cancelled or delivered, disable all options
+  if (currentStatus === "cancelled" || currentStatus === "delivered")
+    return true;
+
+  let allowedStatuses = [];
+  if (currentStatus === "pending") {
+    allowedStatuses = ["confirmed", "shipping", "delivered", "cancelled"];
+  } else if (currentStatus === "confirmed") {
+    allowedStatuses = ["shipping", "delivered"]; // 'cancelled' disabled unless pending
+  } else if (currentStatus === "shipping") {
+    allowedStatuses = ["delivered"];
+  }
+
+  // Disable 'cancelled' unless currentStatus is 'pending'
+  if (optionValue === "cancelled" && currentStatus !== "pending") return true;
+
+  // Always allow current status to be selected
+  if (optionValue === currentStatus) return false;
+  // Disable if not in allowedStatuses
+  return !allowedStatuses.includes(optionValue);
+};
 
 // API client with interceptors
 const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000",
   timeout: 10000,
 });
 
 apiClient.interceptors.response.use(
-  response => response,
-  error => {
+  (response) => response,
+  (error) => {
     const status = error.response?.status;
-    const message = status === 401 ? 'Unauthorized access - please log in' :
-                    status === 404 ? 'Resource not found' :
-                    status >= 500 ? 'Server error - please try again later' :
-                    'Network error - please check your connection';
+    const message =
+      status === 401
+        ? "Unauthorized access - please log in"
+        : status === 404
+        ? "Resource not found"
+        : status >= 500
+        ? "Server error - please try again later"
+        : "Network error - please check your connection";
     return Promise.reject({ ...error, message });
   }
 );
@@ -32,7 +61,9 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
       return response.data;
     } catch (error) {
       if (i === retries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      await new Promise((resolve) =>
+        setTimeout(resolve, delay * Math.pow(2, i))
+      );
     }
   }
 };
@@ -45,21 +76,21 @@ const Orders = () => {
   const [orderDetails, setOrderDetails] = useState([]);
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    order_status: '',
-    pay_status: '',
-    shipping_status: '',
+    order_status: "",
+    pay_status: "",
+    shipping_status: "",
   });
 
   // Filter states
   const [filters, setFilters] = useState({
-    dateFrom: '',
-    dateTo: '',
-    orderStatus: '',
-    payStatus: '',
-    shippingStatus: '',
-    minPrice: '',
-    maxPrice: '',
-    searchQuery: ''
+    dateFrom: "",
+    dateTo: "",
+    orderStatus: "",
+    payStatus: "",
+    shippingStatus: "",
+    minPrice: "",
+    maxPrice: "",
+    searchQuery: "",
   });
   const [showFilters, setShowFilters] = useState(false);
 
@@ -67,20 +98,81 @@ const Orders = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(20);
 
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
   const socketRef = useRef(null);
 
-  // Status options
-  const orderStatusOptions = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-  const payStatusOptions = ['unpaid', 'paid', 'failed'];
-  const shippingStatusOptions = ['not_shipped', 'in_transit', 'delivered'];
+  // Order status options
+  const orderStatusOptions = [
+    { value: "pending", label: "Pending" },
+    { value: "confirmed", label: "Confirmed" },
+    { value: "shipping", label: "Shipping" },
+    { value: "delivered", label: "Delivered" },
+    { value: "cancelled", label: "Cancelled" },
+  ];
+
+  // Payment status options
+  const payStatusOptions = [
+    { value: "unpaid", label: "Unpaid" },
+    { value: "paid", label: "Paid" },
+  ];
+
+  // Refund status options
+  const refundStatusOptions = [
+    { value: "not_applicable", label: "Not Applicable" },
+    { value: "pending_refund", label: "Pending Refund" },
+    { value: "refunded", label: "Refuned" },
+  ];
+
+  // Helper: Hiển thị đẹp và viết hoa chữ cái đầu cho các trạng thái
+  const displayStatus = (str) => {
+    if (!str || typeof str !== "string") return str || "N/A";
+    if (str === "not_applicable") return "Not Applicable";
+    if (str === "pending_refund") return "Pending Refund";
+    if (str === "refunded") return "Refunded";
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  // Disable Update button for specific cases
+  const shouldDisableUpdate = (method, status, pay, refund) => {
+    return (
+      (method === "COD" &&
+        status === "delivered" &&
+        pay === "paid" &&
+        refund === "not_applicable") ||
+      (method === "COD" &&
+        status === "cancelled" &&
+        pay === "unpaid" &&
+        refund === "not_applicable") ||
+      (method === "VNPAY" &&
+        status === "delivered" &&
+        pay === "paid" &&
+        refund === "not_applicable") ||
+      (method === "VNPAY" &&
+        status === "cancelled" &&
+        pay === "paid" &&
+        refund === "refunded") ||
+      (method === "VNPAY" &&
+        status === "cancelled" &&
+        pay === "paid" &&
+        refund === "not_applicable")
+    );
+  };
 
   // Check if any filters are active
   const hasActiveFilters = useCallback(() => {
-    return filters.dateFrom || filters.dateTo || filters.orderStatus || filters.payStatus || filters.shippingStatus || filters.minPrice || filters.maxPrice || filters.searchQuery;
+    return (
+      filters.dateFrom ||
+      filters.dateTo ||
+      filters.orderStatus ||
+      filters.payStatus ||
+      filters.shippingStatus ||
+      filters.minPrice ||
+      filters.maxPrice ||
+      filters.searchQuery
+    );
   }, [filters]);
 
   // Auto-dismiss toast
@@ -96,14 +188,14 @@ const Orders = () => {
   // Fetch orders with filters (server-side filtering)
   const fetchOrders = useCallback(async () => {
     if (!user?._id) {
-      setError('User not authenticated');
+      setError("User not authenticated");
       return;
     }
     setLoading(true);
-    setError('');
+    setError("");
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No authentication token found");
       // Build query params
       const params = {};
       if (filters.searchQuery) params.q = filters.searchQuery;
@@ -111,20 +203,29 @@ const Orders = () => {
       if (filters.dateTo) params.dateTo = filters.dateTo;
       if (filters.orderStatus) params.order_status = filters.orderStatus;
       if (filters.payStatus) params.pay_status = filters.payStatus;
-      if (filters.shippingStatus) params.shipping_status = filters.shippingStatus;
+      if (filters.shippingStatus)
+        params.shipping_status = filters.shippingStatus;
       if (filters.minPrice) params.minPrice = filters.minPrice;
       if (filters.maxPrice) params.maxPrice = filters.maxPrice;
       // Only admin/manager can filter by acc_id
-      if ((user.role === 'admin' || user.role === 'manager') && filters.accId) params.acc_id = filters.accId;
+      if ((user.role === "admin" || user.role === "manager") && filters.accId)
+        params.acc_id = filters.accId;
       const queryString = new URLSearchParams(params).toString();
-      const url = `/orders/search${queryString ? `?${queryString}` : ''}`;
+      const url = `/orders/search${queryString ? `?${queryString}` : ""}`;
       const response = await fetchWithRetry(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setOrders(Array.isArray(response) ? response.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)) : []);
-      setCurrentPage(1); // Reset to first page on new fetch
+      console.log("Orders API response:", response);
+      setOrders(
+  Array.isArray(response)
+    ? response.sort(
+        (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
+      )
+    : []
+);
+      // setCurrentPage(1); // Reset to first page on new fetch
     } catch (err) {
-      setError(err.message || 'Failed to load orders');
+      setError(err.message || "Failed to load orders");
     } finally {
       setLoading(false);
     }
@@ -148,41 +249,41 @@ const Orders = () => {
 
   // Handle previous/next page
   const handlePreviousPage = useCallback(() => {
-    setCurrentPage(prev => Math.max(prev - 1, 1));
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
   }, []);
   const handleNextPage = useCallback(() => {
-    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   }, [totalPages]);
 
   // Handle filter changes
   const handleFilterChange = useCallback((field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
+    setFilters((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   // Clear all filters
   const clearFilters = useCallback(() => {
     setFilters({
-      dateFrom: '',
-      dateTo: '',
-      orderStatus: '',
-      payStatus: '',
-      shippingStatus: '',
-      minPrice: '',
-      maxPrice: '',
-      searchQuery: ''
+      dateFrom: "",
+      dateTo: "",
+      orderStatus: "",
+      payStatus: "",
+      shippingStatus: "",
+      minPrice: "",
+      maxPrice: "",
+      searchQuery: "",
     });
   }, []);
 
   // Toggle filter visibility
   const toggleFilters = useCallback(() => {
-    setShowFilters(prev => !prev);
+    setShowFilters((prev) => !prev);
   }, []);
 
   // Handle authentication state
   useEffect(() => {
     if (isAuthLoading) return;
-    if (!user && !localStorage.getItem('token')) {
-      navigate('/login', { replace: true });
+    if (!user && !localStorage.getItem("token")) {
+      navigate("/login", { replace: true });
     } else if (user) {
       fetchOrders();
     }
@@ -192,10 +293,13 @@ const Orders = () => {
   useEffect(() => {
     if (!user?._id) return;
     if (!socketRef.current) {
-      socketRef.current = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
-        transports: ['websocket'],
-        withCredentials: true,
-      });
+      socketRef.current = io(
+        process.env.REACT_APP_API_URL || "http://localhost:5000",
+        {
+          transports: ["websocket"],
+          withCredentials: true,
+        }
+      );
     }
     const socket = socketRef.current;
     // Listen for order updates (any order change)
@@ -203,9 +307,9 @@ const Orders = () => {
       // Optionally, filter by userId if you only want to update for certain users
       fetchOrders();
     };
-    socket.on('orderUpdated', handleOrderUpdated);
+    socket.on("orderUpdated", handleOrderUpdated);
     return () => {
-      socket.off('orderUpdated', handleOrderUpdated);
+      socket.off("orderUpdated", handleOrderUpdated);
       // Optionally disconnect socket on unmount
       // socket.disconnect();
     };
@@ -215,16 +319,19 @@ const Orders = () => {
   const fetchOrderDetails = useCallback(async () => {
     if (!selectedOrderId || !user?._id) return;
     setLoading(true);
-    setError('');
+    setError("");
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
-      const response = await fetchWithRetry(`/order-details?order_id=${selectedOrderId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No authentication token found");
+      const response = await fetchWithRetry(
+        `/order-details?order_id=${selectedOrderId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setOrderDetails(Array.isArray(response) ? response : []);
     } catch (err) {
-      setError(err.message || 'Failed to load order details');
+      setError(err.message || "Failed to load order details");
     } finally {
       setLoading(false);
     }
@@ -239,29 +346,37 @@ const Orders = () => {
   // Update order statuses
   const updateOrder = useCallback(async (orderId, updatedData) => {
     setLoading(true);
-    setError('');
+    setError("");
     setToast(null);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No authentication token found");
 
       const response = await apiClient.put(`/orders/${orderId}`, updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log('Order updated:', response.data);
-      setOrders(prev =>
-        prev.map(order =>
-          order._id === orderId ? { ...order, ...updatedData } : order
+      console.log("Order updated:", response.data);
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId ? { ...order, ...response.data } : order
         )
       );
-      setToast({ type: 'success', message: 'Order updated successfully' });
+
+      setToast({ type: "success", message: "Order updated successfully" });
       setEditingOrderId(null);
-      setEditFormData({ order_status: '', pay_status: '', shipping_status: '' });
+      setEditFormData({
+        order_status: "",
+        pay_status: "",
+        shipping_status: "",
+      });
     } catch (err) {
-      setError(err.message || 'Failed to update order');
-      setToast({ type: 'error', message: err.message || 'Failed to update order' });
-      console.error('Update order error:', err);
+      setError(err.message || "Failed to update order");
+      setToast({
+        type: "error",
+        message: err.message || "Failed to update order",
+      });
+      console.error("Update order error:", err);
     } finally {
       setLoading(false);
     }
@@ -269,8 +384,11 @@ const Orders = () => {
 
   // Format price
   const formatPrice = useCallback((price) => {
-    if (typeof price !== 'number' || isNaN(price)) return 'N/A';
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+    if (typeof price !== "number" || isNaN(price)) return "N/A";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
   }, []);
 
   // Show loading state while auth is being verified
@@ -289,8 +407,12 @@ const Orders = () => {
     <div className="orders-container">
       {/* Toast Notification */}
       {toast && (
-        <div 
-          className={`orders-toast ${toast.type === 'success' ? 'orders-toast-success' : 'orders-toast-error'}`}
+        <div
+          className={`orders-toast ${
+            toast.type === "success"
+              ? "orders-toast-success"
+              : "orders-toast-error"
+          }`}
           role="alert"
         >
           {toast.message}
@@ -298,14 +420,14 @@ const Orders = () => {
       )}
 
       <div className="orders-header">
-      <h1 className="orders-title">Admin Order Management</h1>
+        <h1 className="orders-title">Admin Order Management</h1>
         <div className="orders-header-actions">
-          <button 
+          <button
             className="orders-filter-toggle"
             onClick={toggleFilters}
             aria-label="Toggle filters"
           >
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
+            {showFilters ? "Hide Filters" : "Show Filters"}
           </button>
         </div>
       </div>
@@ -318,12 +440,16 @@ const Orders = () => {
             <div className="orders-search-section">
               {/* Search Query */}
               <div className="orders-filter-group">
-                <label htmlFor="searchQuery" className="orders-filter-label">Search</label>
+                <label htmlFor="searchQuery" className="orders-filter-label">
+                  Search
+                </label>
                 <input
                   type="text"
                   id="searchQuery"
                   value={filters.searchQuery}
-                  onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("searchQuery", e.target.value)
+                  }
                   placeholder="Search by order ID, status, address, phone..."
                   className="orders-filter-input"
                 />
@@ -332,76 +458,84 @@ const Orders = () => {
             <div className="orders-filter-options">
               {/* Date Range */}
               <div className="orders-filter-group">
-                <label htmlFor="dateFrom" className="orders-filter-label">Date From</label>
+                <label htmlFor="dateFrom" className="orders-filter-label">
+                  Date From
+                </label>
                 <input
                   type="date"
                   id="dateFrom"
                   value={filters.dateFrom}
-                  onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("dateFrom", e.target.value)
+                  }
                   className="orders-filter-input"
                 />
               </div>
               <div className="orders-filter-group">
-                <label htmlFor="dateTo" className="orders-filter-label">Date To</label>
+                <label htmlFor="dateTo" className="orders-filter-label">
+                  Date To
+                </label>
                 <input
                   type="date"
                   id="dateTo"
                   value={filters.dateTo}
-                  onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                  onChange={(e) => handleFilterChange("dateTo", e.target.value)}
                   className="orders-filter-input"
                 />
               </div>
               {/* Status Filters */}
               <div className="orders-filter-group">
-                <label htmlFor="orderStatus" className="orders-filter-label">Order Status</label>
+                <label htmlFor="orderStatus" className="orders-filter-label">
+                  Order Status
+                </label>
                 <select
                   id="orderStatus"
                   value={filters.orderStatus}
-                  onChange={(e) => handleFilterChange('orderStatus', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("orderStatus", e.target.value)
+                  }
                   className="orders-filter-select"
                 >
                   <option value="">All Statuses</option>
-                  {orderStatusOptions.map(status => (
-                    <option key={status} value={status}>{status}</option>
+                  {orderStatusOptions.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="orders-filter-group">
-                <label htmlFor="payStatus" className="orders-filter-label">Payment Status</label>
+                <label htmlFor="payStatus" className="orders-filter-label">
+                  Payment Status
+                </label>
                 <select
                   id="payStatus"
                   value={filters.payStatus}
-                  onChange={(e) => handleFilterChange('payStatus', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("payStatus", e.target.value)
+                  }
                   className="orders-filter-select"
                 >
                   <option value="">All Payment Statuses</option>
-                  {payStatusOptions.map(status => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="orders-filter-group">
-                <label htmlFor="shippingStatus" className="orders-filter-label">Shipping Status</label>
-                <select
-                  id="shippingStatus"
-                  value={filters.shippingStatus}
-                  onChange={(e) => handleFilterChange('shippingStatus', e.target.value)}
-                  className="orders-filter-select"
-                >
-                  <option value="">All Shipping Statuses</option>
-                  {shippingStatusOptions.map(status => (
-                    <option key={status} value={status}>{status}</option>
+                  {payStatusOptions.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
                   ))}
                 </select>
               </div>
               {/* Price Range */}
               <div className="orders-filter-group">
-                <label htmlFor="minPrice" className="orders-filter-label">Min Price</label>
+                <label htmlFor="minPrice" className="orders-filter-label">
+                  Min Price
+                </label>
                 <input
                   type="number"
                   id="minPrice"
                   value={filters.minPrice}
-                  onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("minPrice", e.target.value)
+                  }
                   placeholder="0.00"
                   min="0"
                   step="0.01"
@@ -409,12 +543,16 @@ const Orders = () => {
                 />
               </div>
               <div className="orders-filter-group">
-                <label htmlFor="maxPrice" className="orders-filter-label">Max Price</label>
+                <label htmlFor="maxPrice" className="orders-filter-label">
+                  Max Price
+                </label>
                 <input
                   type="number"
                   id="maxPrice"
                   value={filters.maxPrice}
-                  onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("maxPrice", e.target.value)
+                  }
                   placeholder="9999.99"
                   min="0"
                   step="0.01"
@@ -433,7 +571,9 @@ const Orders = () => {
               Clear Filters
             </button>
             <div className="orders-filter-summary">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredOrders.length)} of {filteredOrders.length} orders
+              Showing {startIndex + 1} to{" "}
+              {Math.min(endIndex, filteredOrders.length)} of{" "}
+              {filteredOrders.length} orders
             </div>
           </div>
         </div>
@@ -444,8 +584,8 @@ const Orders = () => {
         <div className="orders-error" role="alert" aria-live="polite">
           <span className="orders-error-icon">⚠</span>
           <span>{error}</span>
-          <button 
-            className="orders-retry-button" 
+          <button
+            className="orders-retry-button"
             onClick={fetchOrders}
             aria-label="Retry loading orders"
           >
@@ -465,15 +605,19 @@ const Orders = () => {
       {/* Orders Table */}
       {!loading && filteredOrders.length === 0 && !error ? (
         <div className="orders-empty" role="status">
-          <p>{orders.length === 0 ? 'No orders found.' : 'No orders match the current filters.'}</p>
+          <p>
+            {orders.length === 0
+              ? "No orders found."
+              : "No orders match the current filters."}
+          </p>
           {orders.length === 0 && (
-          <button 
-            className="orders-continue-shopping-button"
-            onClick={() => navigate('/')}
-            aria-label="Continue shopping"
-          >
-            Continue Shopping
-          </button>
+            <button
+              className="orders-continue-shopping-button"
+              onClick={() => navigate("/")}
+              aria-label="Continue shopping"
+            >
+              Continue Shopping
+            </button>
           )}
         </div>
       ) : (
@@ -483,160 +627,350 @@ const Orders = () => {
               <tr>
                 <th>#</th>
                 <th>Order ID</th>
+                <th>Name</th>
+                <th>Phone</th>
                 <th>Order Date</th>
                 <th>Total</th>
                 <th>Order Status</th>
+                <th>Payment Method</th>
                 <th>Payment Status</th>
-                <th>Shipping Status</th>
+                <th>Refund</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {currentOrders.map((order, index) => (
-                <React.Fragment key={order._id}>
-                  <tr className="orders-table-row">
-                    <td style={{ textAlign: 'center' }}>{startIndex + index + 1}</td>
-                    <td>{order._id}</td>
-                    <td style={{ textAlign: 'center' }}>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</td>
-                    <td style={{ textAlign: 'center' }}>{formatPrice(order.totalPrice)}</td>
-                    <td className={`orders-status-${order.order_status?.toLowerCase() || 'unknown'}`} style={{ textAlign: 'center' }}>
-                      {editingOrderId === order._id ? (
-                        <select
-                          value={editFormData.order_status}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, order_status: e.target.value }))}
-                          className="orders-status-select"
-                          aria-label="Order status"
-                        >
-                          {orderStatusOptions.map(status => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        order.order_status || 'N/A'
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {editingOrderId === order._id ? (
-                        <select
-                          value={editFormData.pay_status}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, pay_status: e.target.value }))}
-                          className="orders-status-select"
-                          aria-label="Payment status"
-                        >
-                          {payStatusOptions.map(status => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        order.pay_status || 'N/A'
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {editingOrderId === order._id ? (
-                        <select
-                          value={editFormData.shipping_status}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, shipping_status: e.target.value }))}
-                          className="orders-status-select"
-                          aria-label="Shipping status"
-                        >
-                          {shippingStatusOptions.map(status => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        order.shipping_status || 'N/A'
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {editingOrderId === order._id ? (
-                        <div className="orders-action-buttons">
-                          <button
-                            onClick={() => updateOrder(order._id, editFormData)}
-                            className="orders-update-button"
-                            aria-label={`Update order ${order._id}`}
-                            disabled={loading}
+              {currentOrders.map((order, index) => {
+                const isEditEnabled = editingOrderId === order._id;
+                return (
+                  <React.Fragment key={order._id}>
+                    <tr className="orders-table-row">
+                      <td style={{ textAlign: "center" }}>
+                        {startIndex + index + 1}
+                      </td>
+                      <td>
+                        {selectedOrderId === order._id
+                          ? order._id
+                          : order._id?.slice(0, 8) + (order._id?.length > 8 ? '...' : '')}
+                      </td>
+                      <td>{order.acc_id?.name || "N/A"}</td>
+                      <td>{order.phone || order.acc_id?.phone || "N/A"}</td>
+                      <td style={{ textAlign: "center" }}>
+                        {order.orderDate
+                          ? new Date(order.orderDate).toLocaleDateString()
+                          : "N/A"}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {formatPrice(order.totalPrice)}
+                      </td>
+                      <td
+                        className={`orders-status-${
+                          order.order_status?.toLowerCase() || "unknown"
+                        }`}
+                        style={{ textAlign: "center" }}
+                      >
+                        {isEditEnabled ? (
+                         <select
+  value={editFormData.order_status}
+  onChange={(e) => {
+    const newStatus = e.target.value;
+    setEditFormData((prev) => ({
+      ...prev,
+      order_status: newStatus,
+      // Nếu chọn delivered thì auto chuyển pay_status = paid
+      pay_status: newStatus === "delivered" ? "paid" : prev.pay_status,
+    }));
+  }}
+  className="orders-status-select"
+  aria-label="Order status"
+  disabled={!isEditEnabled}
+>
+  {orderStatusOptions.map((status) => (
+    <option
+      key={status.value}
+      value={status.value}
+      disabled={getOrderStatusOptionDisabled(order.order_status, status.value)}
+    >
+      {status.label}
+    </option>
+  ))}
+</select>
+
+                        ) : (
+                          order.order_status ? displayStatus(order.order_status) : "N/A"
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {order.payment_method ? displayStatus(order.payment_method) : "N/A"}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {isEditEnabled ? (
+                          <select
+                            value={editFormData.pay_status}
+                            onChange={(e) =>
+                              setEditFormData((prev) => ({
+                                ...prev,
+                                pay_status: e.target.value,
+                              }))
+                            }
+                            className="orders-status-select"
+                            aria-label="Payment status"
+                            disabled={!isEditEnabled}
                           >
-                            Update
-                          </button>
-                          <button
-                            onClick={() => setEditingOrderId(null)}
-                            className="orders-cancel-button"
-                            aria-label={`Cancel editing order ${order._id}`}
-                            disabled={loading}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="orders-action-buttons">
-                          <button
-                            onClick={() => setSelectedOrderId(selectedOrderId === order._id ? null : order._id)}
-                            className="orders-edit-button"
-                            aria-label={selectedOrderId === order._id ? `Hide details for order ${order._id}` : `View details for order ${order._id}`}
-                          >
-                            {selectedOrderId === order._id ? 'Hide Details' : 'View Details'}
-                          </button>
-                          <button
-                            onClick={() => { setEditingOrderId(order._id); setEditFormData({ order_status: order.order_status, pay_status: order.pay_status, shipping_status: order.shipping_status }); }}
-                            className="orders-edit-button"
-                            aria-label={`Edit order ${order._id}`}
-                          >
-                            Update
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                  {selectedOrderId === order._id && (
-                    <tr className="orders-details-row">
-                      <td colSpan="8" className="orders-details-cell">
-                        <div className="orders-details-section">
-                          <h2 className="orders-details-title">Order Details</h2>
-                          {orderDetails.filter(detail => {
-                            // detail.order_id can be an object or string
-                            const detailOrderId = typeof detail.order_id === 'object' ? detail.order_id._id : detail.order_id;
-                            return detailOrderId === order._id;
-                          }).length === 0 ? (
-                            <p className="orders-no-details">No details available for this order.</p>
-                          ) : (
-                            <div className="orders-details-table-container">
-                              <table className="orders-details-table">
-                                <thead>
-                                  <tr>
-                                    <th>Product</th>
-                                    <th>Color</th>
-                                    <th>Size</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th>Total</th>
-                                    <th>Feedback</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {orderDetails.filter(detail => {
-                                    const detailOrderId = typeof detail.order_id === 'object' ? detail.order_id._id : detail.order_id;
-                                    return detailOrderId === order._id;
-                                  }).map((detail) => (
-                                    <tr key={detail._id} className="orders-detail-item-row">
-                                      <td>{detail.variant_id?.pro_id?.pro_name || 'Unnamed Product'}</td>
-                                      <td>{detail.variant_id?.color_id?.color_name || 'N/A'}</td>
-                                      <td>{detail.variant_id?.size_id?.size_name || 'N/A'}</td>
-                                      <td style={{ textAlign: 'center' }}>{detail.Quantity || 0}</td>
-                                      <td style={{ textAlign: 'center' }}>{formatPrice(detail.UnitPrice)}</td>
-                                      <td style={{ textAlign: 'center' }}>{formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}</td>
-                                      <td>{detail.feedback_details || 'None'}</td>
-                                    </tr>
-                              ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
+                            {payStatusOptions.map((status) => (
+                              <option
+                                key={status.value}
+                                value={status.value}
+                                  disabled={
+                                    (order.payment_method === "VNPAY" && status.value === "unpaid") ||
+                                    (order.payment_method === "COD" && status.value === "paid")
+                                  }
+                              >
+                                {status.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          order.pay_status ? displayStatus(order.pay_status) : "N/A"
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {isEditEnabled ? (
+                          <>
+                            <select
+                              value={
+                                editFormData.refund_status ||
+                                order.refund_status ||
+                                "not_applicable"
+                              }
+                              onChange={(e) =>
+                                setEditFormData((prev) => ({
+                                  ...prev,
+                                  refund_status: e.target.value,
+                                }))
+                              }
+                              className="orders-status-select"
+                              aria-label="Refund status"
+                              disabled={!isEditEnabled}
+                            >
+                              {refundStatusOptions.map((opt) => {
+                                const currentRefund =
+                                  editFormData.refund_status ||
+                                  order.refund_status ||
+                                  "not_applicable";
+                                let isDisabled = false;
+                                // Nếu order_status khác 'cancelled' thì không thể chọn pending_refund/refunded
+                                if (
+                                  editFormData.order_status !== "cancelled" &&
+                                  (opt.value === "pending_refund" ||
+                                    opt.value === "refunded")
+                                ) {
+                                  isDisabled = true;
+                                }
+                                // Nếu current là refunded, chỉ cho chọn refunded
+                                if (
+                                  currentRefund === "refunded" &&
+                                  opt.value !== "refunded"
+                                ) {
+                                  isDisabled = true;
+                                }
+                                // Nếu current là pending_refund, disable not_applicable
+                                if (
+                                  currentRefund === "pending_refund" &&
+                                  opt.value === "not_applicable"
+                                ) {
+                                  isDisabled = true;
+                                }
+                                return (
+                                  <option
+                                    key={opt.value}
+                                    value={opt.value}
+                                    disabled={isDisabled}
+                                  >
+                                    {opt.label}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            {order.refund_proof ? (
+                              <>
+                                <br />
+                                <span style={{ color: "#888" }}>
+                                  Proof: {order.refund_proof}
+                                </span>
+                              </>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            {order.refund_status ? displayStatus(order.refund_status) : "N/A"}
+                            {order.refund_proof ? (
+                              <>
+                                <br />
+                                <span style={{ color: "#888" }}>
+                                  Proof: {order.refund_proof}
+                                </span>
+                              </>
+                            ) : null}
+                          </>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {editingOrderId === order._id ? (
+                          <div className="orders-action-buttons">
+                            <button
+                              onClick={() =>
+                                updateOrder(order._id, editFormData)
+                              }
+                              className="orders-update-button"
+                              aria-label={`Update order ${order._id}`}
+                              disabled={shouldDisableUpdate(
+                                order.payment_method,
+                                order.order_status,
+                                order.pay_status,
+                                order.refund_status
+                              )}
+                            >
+                              Update
+                            </button>
+                            <button
+                              onClick={() => setEditingOrderId(null)}
+                              className="orders-cancel-button"
+                              aria-label={`Cancel editing order ${order._id}`}
+                              disabled={loading}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="orders-action-buttons">
+                            <button
+                              onClick={() =>
+                                setSelectedOrderId(
+                                  selectedOrderId === order._id
+                                    ? null
+                                    : order._id
+                                )
+                              }
+                              className="orders-edit-button"
+                              aria-label={
+                                selectedOrderId === order._id
+                                  ? `Hide details for order ${order._id}`
+                                  : `View details for order ${order._id}`
+                              }
+                            >
+                              {selectedOrderId === order._id
+                                ? "Hide Details"
+                                : "View Details"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingOrderId(order._id);
+                                setEditFormData({
+                                  order_status: order.order_status,
+                                  pay_status: order.pay_status,
+                                  shipping_status: order.shipping_status,
+                                });
+                              }}
+                              className="orders-edit-button"
+                              aria-label={`Edit order ${order._id}`}
+                              disabled={shouldDisableUpdate(
+                                order.payment_method,
+                                order.order_status,
+                                order.pay_status,
+                                order.refund_status
+                              )}
+                            >
+                              Update
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
-                  )}
-                </React.Fragment>
-              ))}
+                    {selectedOrderId === order._id && (
+                      <tr className="orders-details-row">
+                        <td colSpan="8" className="orders-details-cell">
+                          <div className="orders-details-section">
+                            <h2 className="orders-details-title">
+                              Order Details
+                            </h2>
+                            {orderDetails.filter((detail) => {
+                              const detailOrderId =
+                                typeof detail.order_id === "object"
+                                  ? detail.order_id._id
+                                  : detail.order_id;
+                              return detailOrderId === order._id;
+                            }).length === 0 ? (
+                              <p className="orders-no-details">
+                                No details available for this order.
+                              </p>
+                            ) : (
+                              <div className="orders-details-table-container">
+                                <table className="orders-details-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Product</th>
+                                      <th>Color</th>
+                                      <th>Size</th>
+                                      <th>Quantity</th>
+                                      <th>Unit Price</th>
+                                      <th>Total</th>
+                                      <th>Feedback</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {orderDetails
+                                      .filter((detail) => {
+                                        const detailOrderId =
+                                          typeof detail.order_id === "object"
+                                            ? detail.order_id._id
+                                            : detail.order_id;
+                                        return detailOrderId === order._id;
+                                      })
+                                      .map((detail) => (
+                                        <tr
+                                          key={detail._id}
+                                          className="orders-detail-item-row"
+                                        >
+                                          <td>
+                                            {detail.variant_id?.pro_id
+                                              ?.pro_name || "Unnamed Product"}
+                                          </td>
+                                          <td>
+                                            {detail.variant_id?.color_id
+                                              ?.color_name || "N/A"}
+                                          </td>
+                                          <td>
+                                            {detail.variant_id?.size_id
+                                              ?.size_name || "N/A"}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {detail.Quantity || 0}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {formatPrice(detail.UnitPrice)}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {formatPrice(
+                                              (detail.UnitPrice || 0) *
+                                                (detail.Quantity || 0)
+                                            )}
+                                          </td>
+                                          <td>
+                                            {detail.feedback_details || "None"}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -646,7 +980,9 @@ const Orders = () => {
       {filteredOrders.length > 0 && (
         <div className="orders-pagination">
           <div className="orders-pagination-info">
-            Showing {startIndex + 1} to {Math.min(endIndex, filteredOrders.length)} of {filteredOrders.length} orders
+            Showing {startIndex + 1} to{" "}
+            {Math.min(endIndex, filteredOrders.length)} of{" "}
+            {filteredOrders.length} orders
           </div>
           <div className="orders-pagination-controls">
             <button
@@ -658,16 +994,20 @@ const Orders = () => {
               Previous
             </button>
             <div className="orders-pagination-pages">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  className={`orders-pagination-page ${currentPage === page ? 'active' : ''}`}
-                  onClick={() => handlePageChange(page)}
-                  aria-label={`Page ${page}`}
-                >
-                  {page}
-                </button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    className={`orders-pagination-page ${
+                      currentPage === page ? "active" : ""
+                    }`}
+                    onClick={() => handlePageChange(page)}
+                    aria-label={`Page ${page}`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
             </div>
             <button
               className="orders-pagination-button"
