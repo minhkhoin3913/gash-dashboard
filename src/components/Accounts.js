@@ -123,9 +123,38 @@ const Accounts = () => {
     }
   }, [editFormData, user]);
 
-  // Delete account
-  const deleteAccount = useCallback(async (accountId) => {
-    if (!window.confirm('Are you sure you want to delete this account?')) return;
+  // Soft delete account
+  const softDeleteAccount = useCallback(async (accountId) => {
+    if (!window.confirm('Are you sure you want to soft delete this account? This will mark all fields as deleted.')) return;
+
+    setLoading(true);
+    setError('');
+    setToast(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      await apiClient.delete(`/accounts/soft/${accountId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAccounts(prev => prev.filter(account => account._id !== accountId));
+      setToast({ type: 'success', message: 'Account soft deleted successfully' });
+      if (editingAccountId === accountId) setEditingAccountId(null);
+      if (accountId === user._id) {
+        localStorage.removeItem('token');
+        navigate('/login', { replace: true });
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to soft delete account');
+      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to soft delete account' });
+      console.error('Soft delete account error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [editingAccountId, user, navigate]);
+
+  // Hard delete account
+  const hardDeleteAccount = useCallback(async (accountId) => {
+    if (!window.confirm('Are you sure you want to permanently delete this account? This action cannot be undone.')) return;
 
     setLoading(true);
     setError('');
@@ -137,7 +166,7 @@ const Accounts = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAccounts(prev => prev.filter(account => account._id !== accountId));
-      setToast({ type: 'success', message: 'Account deleted successfully' });
+      setToast({ type: 'success', message: 'Account permanently deleted successfully' });
       if (editingAccountId === accountId) setEditingAccountId(null);
       if (accountId === user._id) {
         localStorage.removeItem('token');
@@ -146,7 +175,7 @@ const Accounts = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete account');
       setToast({ type: 'error', message: err.response?.data?.message || 'Failed to delete account' });
-      console.error('Delete account error:', err);
+      console.error('Hard delete account error:', err);
     } finally {
       setLoading(false);
     }
@@ -297,46 +326,49 @@ const Accounts = () => {
                     )}
                   </td>
                   <td>
-                    {editingAccountId === account._id ? (
-                      <div className="accounts-action-buttons">
-                        <button
-                          onClick={() => handleUpdateSubmit(account._id)}
-                          className="accounts-update-button"
-                          aria-label={`Update account ${account._id}`}
-                          disabled={loading}
-                        >
-                          Update
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="accounts-cancel-button"
-                          aria-label={`Cancel editing account ${account._id}`}
-                          disabled={loading}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="accounts-action-buttons">
-                        {(user.role === 'admin' || user._id === account._id) && (
+                    {/* Hide Update and Delete buttons if is_deleted is true */}
+                    {account.is_deleted ? null : (
+                      editingAccountId === account._id ? (
+                        <div className="accounts-action-buttons">
                           <button
-                            onClick={() => handleEditAccount(account)}
-                            className="accounts-edit-button"
-                            aria-label={`Edit account ${account._id}`}
+                            onClick={() => handleUpdateSubmit(account._id)}
+                            className="accounts-update-button"
+                            aria-label={`Update account ${account._id}`}
+                            disabled={loading}
                           >
                             Update
                           </button>
-                        )}
-                        {(user.role === 'admin' || user._id === account._id) && (
                           <button
-                            onClick={() => deleteAccount(account._id)}
-                            className="accounts-delete-button"
-                            aria-label={`Delete account ${account._id}`}
+                            onClick={handleCancelEdit}
+                            className="accounts-cancel-button"
+                            aria-label={`Cancel editing account ${account._id}`}
+                            disabled={loading}
                           >
-                            Delete
+                            Cancel
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="accounts-action-buttons">
+                          {(user.role === 'admin' || user._id === account._id) && (
+                            <button
+                              onClick={() => handleEditAccount(account)}
+                              className="accounts-edit-button"
+                              aria-label={`Edit account ${account._id}`}
+                            >
+                              Update
+                            </button>
+                          )}
+                          {(user.role === 'admin' || user._id === account._id) && (
+                            <button
+                              onClick={() => softDeleteAccount(account._id)}
+                              className="accounts-delete-button"
+                              aria-label={`Delete account ${account._id}`}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      )
                     )}
                   </td>
                 </tr>
