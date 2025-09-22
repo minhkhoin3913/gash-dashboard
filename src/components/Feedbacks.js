@@ -587,6 +587,7 @@ const Feedbacks = () => {
       )}
 
       {/* Pagination */}
+      {/*  */}
       {feedbacks.length > 0 && (
         <div className="feedbacks-pagination">
           <div className="feedbacks-pagination-info">
