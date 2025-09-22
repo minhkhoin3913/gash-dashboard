@@ -59,6 +59,10 @@ const ProductSpecifications = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
+  const [newImageFile, setNewImageFile] = useState(null);
+  const [newImagePreview, setNewImagePreview] = useState('');
+  const [editImageFile, setEditImageFile] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState('');
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -67,6 +71,55 @@ const ProductSpecifications = () => {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Upload helper (single image)
+  const uploadSingleImage = useCallback(async (file) => {
+    const token = localStorage.getItem('token');
+    if (!file) return '';
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await apiClient.post('/upload', formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data?.url || '';
+  }, []);
+
+  const handleNewImageFileChange = useCallback((e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setToast({ type: 'error', message: 'Please select a valid image file' });
+        setNewImageFile(null);
+        setNewImagePreview('');
+        return;
+      }
+      setNewImageFile(file);
+      setNewImagePreview(URL.createObjectURL(file));
+    } else {
+      setNewImageFile(null);
+      setNewImagePreview('');
+    }
+  }, []);
+
+  const handleEditImageFileChange = useCallback((e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setToast({ type: 'error', message: 'Please select a valid image file' });
+        setEditImageFile(null);
+        setEditImagePreview('');
+        return;
+      }
+      setEditImageFile(file);
+      setEditImagePreview(URL.createObjectURL(file));
+    } else {
+      setEditImageFile(null);
+      setEditImagePreview('');
+    }
+  }, []);
 
   // Fetch images
   const fetchImages = useCallback(async () => {
@@ -149,8 +202,8 @@ const ProductSpecifications = () => {
     const data = newSpecForm[type];
     const endpoint = `/specifications/${type.slice(0, -1)}`; // e.g., /image, /color, /size
 
-    if (type === 'images' && (!data.pro_id || !data.imageURL)) {
-      setError('Product and image URL are required');
+    if (type === 'images' && (!data.pro_id || (!newImageFile))) {
+      setError('Please select a product and upload an image file');
       setLoading(false);
       return;
     }
@@ -162,7 +215,13 @@ const ProductSpecifications = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await apiClient.post(endpoint, type === 'images' ? data : { [`${type.slice(0, -1)}_name`]: data.content }, {
+      let imageURLToUse = data.imageURL;
+      if (type === 'images') {
+        imageURLToUse = await uploadSingleImage(newImageFile);
+        if (!imageURLToUse) throw new Error('Image upload failed');
+      }
+      const payload = type === 'images' ? { ...data, imageURL: imageURLToUse } : { [`${type.slice(0, -1)}_name`]: data.content };
+      const response = await apiClient.post(endpoint, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (type === 'images') setImages(prev => [...prev, response.data.image]);
@@ -173,6 +232,10 @@ const ProductSpecifications = () => {
         ...prev,
         [type]: type === 'images' ? { pro_id: '', imageURL: '' } : { content: '' },
       }));
+      if (type === 'images') {
+        setNewImageFile(null);
+        setNewImagePreview('');
+      }
       setShowAddForm(prev => ({ ...prev, [type]: false }));
     } catch (err) {
       setError(err.response?.data?.message || `Failed to create ${type.slice(0, -1)}`);
@@ -191,8 +254,8 @@ const ProductSpecifications = () => {
 
     const endpoint = `/specifications/${type.slice(0, -1)}/${id}`;
 
-    if (type === 'images' && (!data.pro_id || !data.imageURL)) {
-      setError('Product and image URL are required');
+    if (type === 'images' && (!data.pro_id || (!editImageFile && !editFormData.imageURL))) {
+      setError('Please select a product and upload an image file');
       setLoading(false);
       return;
     }
@@ -204,7 +267,14 @@ const ProductSpecifications = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await apiClient.put(endpoint, type === 'images' ? data : { [`${type.slice(0, -1)}_name`]: data.content }, {
+      let imageURLToUse = data.imageURL;
+      if (type === 'images') {
+        if (!editImageFile && !imageURLToUse) throw new Error('Please upload an image');
+        imageURLToUse = await uploadSingleImage(editImageFile);
+        if (!imageURLToUse) throw new Error('Image upload failed');
+      }
+      const payload = type === 'images' ? { ...data, imageURL: imageURLToUse } : { [`${type.slice(0, -1)}_name`]: data.content };
+      const response = await apiClient.put(endpoint, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (type === 'images') {
@@ -219,6 +289,10 @@ const ProductSpecifications = () => {
       setToast({ type: 'success', message: `${type.capitalize()} updated successfully` });
       setEditingSpecId(null);
       setEditFormData({});
+      if (type === 'images') {
+        setEditImageFile(null);
+        setEditImagePreview('');
+      }
     } catch (err) {
       setError(err.response?.data?.message || `Failed to update ${type.slice(0, -1)}`);
       setToast({ type: 'error', message: err.response?.data?.message || `Failed to update ${type.slice(0, -1)}` });
@@ -278,6 +352,8 @@ const ProductSpecifications = () => {
         pro_id: item.pro_id?._id || item.pro_id || '',
         imageURL: item.imageURL || '',
       });
+      setEditImageFile(null);
+      setEditImagePreview('');
     } else {
       setEditFormData({
         content: item[`${type.slice(0, -1)}_name`] || '',
@@ -289,6 +365,8 @@ const ProductSpecifications = () => {
   const handleCancelEdit = useCallback(() => {
     setEditingSpecId(null);
     setEditFormData({});
+    setEditImageFile(null);
+    setEditImagePreview('');
   }, []);
 
   // Handle field change for edit form
@@ -459,16 +537,23 @@ const ProductSpecifications = () => {
                 </select>
               </div>
               <div className="specifications-form-group">
-                <label htmlFor="new-image-url">Image URL</label>
+                <label htmlFor="new-image-file">Upload Image</label>
                 <input
-                  id="new-image-url"
-                  type="text"
-                  value={newSpecForm.images.imageURL}
-                  onChange={(e) => handleNewFieldChange(e, 'images', 'imageURL')}
-                  className="specifications-form-input"
-                  aria-label="Image URL"
-                  required
+                  id="new-image-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleNewImageFileChange}
+                  aria-label="Upload image file"
                 />
+                {newImagePreview && (
+                  <div className="specifications-image-preview">
+                    <img
+                      src={newImagePreview}
+                      alt="Preview"
+                      className="specifications-image"
+                    />
+                  </div>
+                )}
               </div>
               <div className="specifications-form-actions">
                 <button
@@ -539,14 +624,23 @@ const ProductSpecifications = () => {
                       </td>
                       <td>
                         {editingSpecId === image._id ? (
-                          <input
-                            type="text"
-                            value={editFormData.imageURL}
-                            onChange={(e) => handleEditFieldChange(e, 'imageURL')}
-                            className="specifications-form-input"
-                            aria-label="Image URL"
-                            required
-                          />
+                          <div className="specifications-edit-image">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleEditImageFileChange}
+                              aria-label="Upload new image"
+                            />
+                            {editImagePreview && (
+                              <div className="specifications-image-preview">
+                                <img
+                                  src={editImagePreview}
+                                  alt="Preview"
+                                  className="specifications-image"
+                                />
+                              </div>
+                            )}
+                          </div>
                         ) : image.imageURL ? (
                           <img
                             src={image.imageURL}
