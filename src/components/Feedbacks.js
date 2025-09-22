@@ -258,9 +258,11 @@ const Feedbacks = () => {
     }
   }, [editFormData]);
 
-  // Delete feedback
-  const deleteFeedback = useCallback(async (feedbackId) => {
-    if (!window.confirm('Are you sure you want to delete this feedback?')) return;
+  // Soft delete / undelete toggle
+  const toggleDeleteFeedback = useCallback(async (feedback, nextDeletedState) => {
+    if (nextDeletedState) {
+      if (!window.confirm('Are you sure you want to soft-delete this feedback?')) return;
+    }
 
     setLoading(true);
     setError('');
@@ -268,16 +270,17 @@ const Feedbacks = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await apiClient.put(`/order-details/${feedbackId}`, { feedback_details: '' }, {
+      const response = await apiClient.put(`/order-details/${feedback._id}`, { is_deleted: nextDeletedState }, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setFeedbacks(prev => prev.filter(feedback => feedback._id !== feedbackId));
-      setToast({ type: 'success', message: 'Feedback deleted successfully' });
-      if (editingFeedbackId === feedbackId) setEditingFeedbackId(null);
+      const updated = response.data.orderDetail || { ...feedback, is_deleted: nextDeletedState };
+      setFeedbacks(prev => prev.map(f => f._id === feedback._id ? { ...f, ...updated } : f));
+      setToast({ type: 'success', message: nextDeletedState ? 'Feedback marked as deleted' : 'Feedback restored' });
+      if (editingFeedbackId === feedback._id) setEditingFeedbackId(null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete feedback');
-      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to delete feedback' });
-      console.error('Delete feedback error:', err);
+      setError(err.response?.data?.message || 'Failed to update deletion state');
+      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to update deletion state' });
+      console.error('Toggle delete feedback error:', err);
     } finally {
       setLoading(false);
     }
@@ -558,20 +561,20 @@ const Feedbacks = () => {
                     {feedback.variant_id?.size_id?.size_name || 'N/A'}
                   </td>
                   <td>
-                    {feedback.order_id?.feedback_order || 'None'}
+                    {feedback.is_deleted ? 'Deleted' : (feedback.order_id?.feedback_order || 'None')}
                   </td>
                   <td>
-                    {feedback.feedback_details}
+                    {feedback.is_deleted ? 'Deleted' : feedback.feedback_details}
                   </td>
                   <td>
                       <div className="feedbacks-action-buttons">
                         {(user?.role === 'admin' || user?.role === 'manager' || feedback.order_id?.acc_id?._id === user?._id) && (
                           <button
-                            onClick={() => deleteFeedback(feedback._id)}
+                            onClick={() => toggleDeleteFeedback(feedback, !feedback.is_deleted)}
                             className="feedbacks-delete-button"
-                            aria-label={`Delete feedback ${feedback._id}`}
+                            aria-label={`${feedback.is_deleted ? 'Undelete' : 'Delete'} feedback ${feedback._id}`}
                           >
-                            Delete
+                            {feedback.is_deleted ? 'Undelete' : 'Delete'}
                           </button>
                         )}
                       </div>
