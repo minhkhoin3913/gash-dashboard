@@ -157,52 +157,7 @@
   outline-offset: 2px;
 }
 
-/* Add Account Button */
-.accounts-add-button-container {
-  margin-bottom: 16px;
-}
-
-.accounts-add-button {
-  padding: 10px 16px;
-  background-color: var(--amazon-primary);
-  border: 1px solid #d5a429;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: bold;
-  color: var(--amazon-text);
-  transition: background-color var(--transition-fast);
-}
-
-.accounts-add-button:hover {
-  background-color: #f7ca00;
-}
-
-.accounts-add-button:focus {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: 2px;
-}
-
-/* Add Account Form */
-.accounts-add-form {
-  background-color: var(--amazon-bg);
-  padding: 16px;
-  border: 1px solid var(--amazon-border);
-  border-radius: 4px;
-  margin-bottom: 16px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-}
-
-.accounts-form-title {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: var(--amazon-text);
-  margin-bottom: 12px;
-  grid-column: 1 / -1;
-}
-
+/* Form Group */
 .accounts-form-group {
   display: flex;
   flex-direction: column;
@@ -214,7 +169,6 @@
   margin-bottom: 4px;
 }
 
-.accounts-form-input,
 .accounts-form-select {
   width: 100%;
   padding: 8px;
@@ -226,60 +180,10 @@
   transition: box-shadow var(--transition-fast);
 }
 
-.accounts-form-input:focus,
 .accounts-form-select:focus {
   outline: none;
   box-shadow: 0 0 0 2px var(--amazon-focus);
   border-color: var(--amazon-focus);
-}
-
-.accounts-form-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.accounts-create-button,
-.accounts-cancel-button {
-  padding: 8px 16px;
-  border: 1px solid var(--amazon-border);
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background-color var(--transition-fast);
-}
-
-.accounts-create-button {
-  background-color: var(--amazon-primary);
-  color: var(--amazon-text);
-  border-color: #d5a429;
-}
-
-.accounts-create-button:hover {
-  background-color: #f7ca00;
-}
-
-.accounts-cancel-button {
-  background-color: var(--amazon-bg);
-  color: var(--amazon-text);
-}
-
-.accounts-cancel-button:hover {
-  background-color: var(--amazon-secondary-bg);
-}
-
-.accounts-create-button:focus,
-.accounts-cancel-button:focus {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: 2px;
-}
-
-.accounts-create-button:disabled,
-.accounts-cancel-button:disabled {
-  background-color: #e9ecef;
-  color: var(--amazon-secondary-text);
-  cursor: not-allowed;
 }
 
 /* Accounts Table */
@@ -328,18 +232,14 @@
 }
 
 .accounts-table th:nth-child(5) { /* Role */
-  width: 10%;
-}
-
-.accounts-table th:nth-child(6) { /* Status */
-  width: 10%;
-}
-
-.accounts-table th:nth-child(7) { /* Action */
   width: 15%;
 }
 
-.accounts-table th:nth-child(8) { /* Image */
+.accounts-table th:nth-child(6) { /* Status */
+  width: 15%;
+}
+
+.accounts-table th:nth-child(7) { /* Action */
   width: 15%;
 }
 
