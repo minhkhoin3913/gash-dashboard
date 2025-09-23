@@ -40,15 +40,28 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 const Accounts = () => {
   const { user, isAuthLoading } = useContext(AuthContext);
   const [accounts, setAccounts] = useState([]);
+  const [filteredAccounts, setFilteredAccounts] = useState([]);
   const [editingAccountId, setEditingAccountId] = useState(null);
   const [editFormData, setEditFormData] = useState({
     role: 'user',
     acc_status: 'active',
   });
+  const [filters, setFilters] = useState({
+    searchQuery: '',
+    roleFilter: '',
+    statusFilter: '',
+    hasImage: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(20);
   const navigate = useNavigate();
+
+  const roleOptions = ['user', 'admin', 'manager'];
+  const statusOptions = ['active', 'suspended'];
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -75,7 +88,8 @@ const Accounts = () => {
       const response = await fetchWithRetry(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setAccounts(user.role === 'admin' ? (Array.isArray(response) ? response : []) : [response]);
+      const fetchedAccounts = user.role === 'admin' ? (Array.isArray(response) ? response : []) : [response];
+      setAccounts(fetchedAccounts);
     } catch (err) {
       setError(err.message || 'Failed to load accounts');
       console.error('Fetch accounts error:', err);
@@ -84,11 +98,60 @@ const Accounts = () => {
     }
   }, [user]);
 
+  // Apply filters
+  const applyFilters = useCallback((accountsList, filterSettings) => {
+    return accountsList.filter(account => {
+      // Search query filter
+      if (filterSettings.searchQuery) {
+        const query = filterSettings.searchQuery.toLowerCase();
+        const username = account.username?.toLowerCase() || '';
+        const name = account.name?.toLowerCase() || '';
+        const email = account.email?.toLowerCase() || '';
+        const phone = account.phone?.toLowerCase() || '';
+        const accountId = account._id?.toLowerCase() || '';
+        
+        if (!username.includes(query) && 
+            !name.includes(query) && 
+            !email.includes(query) && 
+            !phone.includes(query) && 
+            !accountId.includes(query)) {
+          return false;
+        }
+      }
+
+      // Role filter
+      if (filterSettings.roleFilter && account.role !== filterSettings.roleFilter) {
+        return false;
+      }
+
+      // Status filter
+      if (filterSettings.statusFilter && account.acc_status !== filterSettings.statusFilter) {
+        return false;
+      }
+
+      // Has custom image filter
+      const defaultImage = 'http://localhost:4000/default-pfp.jpg';
+      if (filterSettings.hasImage === 'true' && (account.image === defaultImage || !account.image)) {
+        return false;
+      }
+      if (filterSettings.hasImage === 'false' && account.image !== defaultImage) {
+        return false;
+      }
+
+      return true;
+    });
+  }, []);
+
+  // Update filtered accounts when accounts or filters change
+  useEffect(() => {
+    setFilteredAccounts(applyFilters(accounts, filters));
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [accounts, filters, applyFilters]);
+
   // Update account
   const updateAccount = useCallback(async (accountId) => {
     if (!accountId) return;
     
-    setLoading(true);
     setError('');
     setToast(null);
 
@@ -118,8 +181,6 @@ const Accounts = () => {
       setError(err.response?.data?.message || 'Failed to update account');
       setToast({ type: 'error', message: err.response?.data?.message || 'Failed to update account' });
       console.error('Update account error:', err);
-    } finally {
-      setLoading(false);
     }
   }, [editFormData, user]);
 
@@ -127,7 +188,6 @@ const Accounts = () => {
   const softDeleteAccount = useCallback(async (accountId) => {
     if (!window.confirm('Are you sure you want to soft delete this account? This will mark all fields as deleted.')) return;
 
-    setLoading(true);
     setError('');
     setToast(null);
 
@@ -147,8 +207,6 @@ const Accounts = () => {
       setError(err.response?.data?.message || 'Failed to soft delete account');
       setToast({ type: 'error', message: err.response?.data?.message || 'Failed to soft delete account' });
       console.error('Soft delete account error:', err);
-    } finally {
-      setLoading(false);
     }
   }, [editingAccountId, user, navigate]);
 
@@ -156,7 +214,6 @@ const Accounts = () => {
   const hardDeleteAccount = useCallback(async (accountId) => {
     if (!window.confirm('Are you sure you want to permanently delete this account? This action cannot be undone.')) return;
 
-    setLoading(true);
     setError('');
     setToast(null);
 
@@ -176,8 +233,6 @@ const Accounts = () => {
       setError(err.response?.data?.message || 'Failed to delete account');
       setToast({ type: 'error', message: err.response?.data?.message || 'Failed to delete account' });
       console.error('Hard delete account error:', err);
-    } finally {
-      setLoading(false);
     }
   }, [editingAccountId, user, navigate]);
 
@@ -219,10 +274,46 @@ const Accounts = () => {
     updateAccount(accountId);
   }, [updateAccount]);
 
+  // Handle filter change
+  const handleFilterChange = (e) => {
+    const { id, value } = e.target;
+    setFilters(prev => ({ ...prev, [id]: value }));
+  };
+
+  // Clear filters
+  const handleClearFilters = () => {
+    setFilters({
+      searchQuery: '',
+      roleFilter: '',
+      statusFilter: '',
+      hasImage: ''
+    });
+  };
+
   // Retry fetching data
   const handleRetry = useCallback(() => {
     fetchAccounts();
   }, [fetchAccounts]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAccounts.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const currentAccounts = filteredAccounts.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Handle previous/next page
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
 
   // Show loading state while auth is being verified
   if (isAuthLoading) {
@@ -247,7 +338,94 @@ const Accounts = () => {
         </div>
       )}
 
-      <h1 className="accounts-title">Account Management</h1>
+      {/* Header */}
+      <div className="accounts-header">
+        <h1 className="accounts-title">Account Management</h1>
+        <div className="accounts-header-actions">
+          <button
+            className="accounts-filter-toggle"
+            onClick={() => setShowFilters(prev => !prev)}
+            aria-label={showFilters ? "Hide filters" : "Show filters"}
+            aria-expanded={showFilters}
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <div className="accounts-filters">
+          <h2 className="accounts-filter-title">Filters</h2>
+          <div className="accounts-filters-grid">
+            <div className="accounts-filter-group">
+              <label htmlFor="searchQuery" className="accounts-filter-label">Search</label>
+              <input
+                id="searchQuery"
+                type="text"
+                value={filters.searchQuery}
+                onChange={handleFilterChange}
+                className="accounts-filter-input"
+                placeholder="Search by username, name, email, phone..."
+                aria-label="Search accounts"
+              />
+            </div>
+            <div className="accounts-filter-group">
+              <label htmlFor="roleFilter" className="accounts-filter-label">Role</label>
+              <select
+                id="roleFilter"
+                value={filters.roleFilter}
+                onChange={handleFilterChange}
+                className="accounts-filter-select"
+                aria-label="Filter by role"
+              >
+                <option value="">All Roles</option>
+                {roleOptions.map(role => (
+                  <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="accounts-filter-group">
+              <label htmlFor="statusFilter" className="accounts-filter-label">Status</label>
+              <select
+                id="statusFilter"
+                value={filters.statusFilter}
+                onChange={handleFilterChange}
+                className="accounts-filter-select"
+                aria-label="Filter by status"
+              >
+                <option value="">All Statuses</option>
+                {statusOptions.map(status => (
+                  <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="accounts-filter-group">
+              <label htmlFor="hasImage" className="accounts-filter-label">Has Custom Image</label>
+              <select
+                id="hasImage"
+                value={filters.hasImage}
+                onChange={handleFilterChange}
+                className="accounts-filter-select"
+                aria-label="Filter by custom image"
+              >
+                <option value="">All</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          </div>
+          <div className="accounts-filter-actions">
+            <button
+              onClick={handleClearFilters}
+              className="accounts-clear-filters"
+              aria-label="Clear all filters"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (
@@ -267,7 +445,7 @@ const Accounts = () => {
       )}
 
       {/* Accounts Table */}
-      {!loading && accounts.length === 0 && !error ? (
+      {!loading && filteredAccounts.length === 0 && !error ? (
         <div className="accounts-empty" role="status">
           <p>No accounts found.</p>
           <button className="accounts-continue-shopping-button" onClick={() => navigate('/')} aria-label="Continue shopping">Continue Shopping</button>
@@ -281,19 +459,21 @@ const Accounts = () => {
                 <th>Username</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Phone</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {accounts.map((account, index) => (
+              {currentAccounts.map((account, index) => (
                 <tr key={account._id} className="accounts-table-row">
-                  <td>{index + 1}</td>
-                  <td>{account.username || 'N/A'}</td>
-                  <td>{account.name || 'N/A'}</td>
-                  <td>{account.email || 'N/A'}</td>
-                  <td>
+                  <td data-label="#">{startIndex + index + 1}</td>
+                  <td data-label="Username">{account.username || 'N/A'}</td>
+                  <td data-label="Name">{account.name || 'N/A'}</td>
+                  <td data-label="Email">{account.email || 'N/A'}</td>
+                  <td data-label="Phone">{account.phone || 'N/A'}</td>
+                  <td data-label="Role">
                     {editingAccountId === account._id && user.role === 'admin' ? (
                       <select
                         value={editFormData.role}
@@ -309,7 +489,7 @@ const Accounts = () => {
                       account.role || 'N/A'
                     )}
                   </td>
-                  <td>
+                  <td data-label="Status">
                     {editingAccountId === account._id && user.role === 'admin' ? (
                       <select
                         value={editFormData.acc_status}
@@ -318,15 +498,13 @@ const Accounts = () => {
                         aria-label="Status"
                       >
                         <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
                         <option value="suspended">Suspended</option>
                       </select>
                     ) : (
                       account.acc_status || 'N/A'
                     )}
                   </td>
-                  <td>
-                    {/* Hide Update and Delete buttons if is_deleted is true */}
+                  <td data-label="Action">
                     {account.is_deleted ? null : (
                       editingAccountId === account._id ? (
                         <div className="accounts-action-buttons">
@@ -334,7 +512,6 @@ const Accounts = () => {
                             onClick={() => handleUpdateSubmit(account._id)}
                             className="accounts-update-button"
                             aria-label={`Update account ${account._id}`}
-                            disabled={loading}
                           >
                             Update
                           </button>
@@ -342,7 +519,6 @@ const Accounts = () => {
                             onClick={handleCancelEdit}
                             className="accounts-cancel-button"
                             aria-label={`Cancel editing account ${account._id}`}
-                            disabled={loading}
                           >
                             Cancel
                           </button>
@@ -375,6 +551,45 @@ const Accounts = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {filteredAccounts.length > 0 && (
+        <div className="accounts-pagination">
+          <div className="accounts-pagination-info">
+            Showing {startIndex + 1} to {Math.min(endIndex, filteredAccounts.length)} of {filteredAccounts.length} accounts
+          </div>
+          <div className="accounts-pagination-controls">
+            <button
+              className="accounts-pagination-button"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              Previous
+            </button>
+            <div className="accounts-pagination-pages">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  className={`accounts-pagination-page ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => handlePageChange(page)}
+                  aria-label={`Page ${page}`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              className="accounts-pagination-button"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -8,8 +8,6 @@ import gashLogo from '../assets/image/gash-logo.svg';
 const DROPDOWN_CLOSE_DELAY = 150;
 const ERROR_TIMEOUT = 5000;
 
-
-
 const useClickOutside = (ref, callback) => {
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -31,21 +29,17 @@ const Layout = ({ children }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [error, setError] = useState(null);
   const [logoLoaded, setLogoLoaded] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Sidebar open by default for authenticated users
 
   // Refs
   const dropdownRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
   const sidebarRef = useRef(null);
 
-  // Close dropdown and sidebar on click outside
+  // Close dropdown on click outside
   useClickOutside(dropdownRef, useCallback(() => {
     clearTimeout(dropdownTimeoutRef.current);
     dropdownTimeoutRef.current = setTimeout(() => setIsDropdownOpen(false), DROPDOWN_CLOSE_DELAY);
-  }, []));
-
-  useClickOutside(sidebarRef, useCallback(() => {
-    setIsSidebarOpen(false);
   }, []));
 
   // Clear timeout on unmount
@@ -53,19 +47,17 @@ const Layout = ({ children }) => {
     return () => clearTimeout(dropdownTimeoutRef.current);
   }, []);
 
-  // Close dropdown, sidebar, and reset error on route change
+  // Close dropdown and reset error on route change
   useEffect(() => {
     setIsDropdownOpen(false);
-    setIsSidebarOpen(false);
     setError(null);
   }, [location.pathname]);
 
-  // Keyboard navigation
+  // Keyboard navigation for dropdown only
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         setIsDropdownOpen(false);
-        setIsSidebarOpen(false);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -138,6 +130,9 @@ const Layout = ({ children }) => {
     []
   );
 
+  // Render sidebar only for authenticated routes (exclude /login)
+  const showSidebar = user && !location.pathname.startsWith('/login');
+
   return (
     <div className="layout">
       {/* Error notification */}
@@ -160,7 +155,7 @@ const Layout = ({ children }) => {
       <nav className="navbar" role="navigation" aria-label="Main navigation">
         <div className="navbar-container">
           {/* Sidebar Toggle Button */}
-          {user && ['admin', 'manager'].includes(user.role) && (
+          {showSidebar && (
             <button
               className="nav-button sidebar-toggle"
               onClick={handleSidebarToggle}
@@ -248,7 +243,7 @@ const Layout = ({ children }) => {
       </nav>
 
       {/* Admin Sidebar */}
-      {user && ['admin', 'manager'].includes(user.role) && (
+      {showSidebar && (
         <aside
           className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}
           ref={sidebarRef}
@@ -257,14 +252,6 @@ const Layout = ({ children }) => {
         >
           <div className="sidebar-header">
             <h2>Admin Panel</h2>
-            <button
-              className="sidebar-close"
-              onClick={() => setIsSidebarOpen(false)}
-              aria-label="Close sidebar"
-              type="button"
-            >
-              ×
-            </button>
           </div>
           <nav className="sidebar-nav">
             {sidebarItems.map((item, index) => (
@@ -272,7 +259,6 @@ const Layout = ({ children }) => {
                 key={index}
                 to={item.to}
                 className="sidebar-item"
-                onClick={() => setIsSidebarOpen(false)}
                 role="menuitem"
               >
                 {item.label}
