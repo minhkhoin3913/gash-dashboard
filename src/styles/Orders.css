@@ -1,3 +1,18 @@
+.orders-table th:nth-child(7),
+/* Order Status */
+.orders-table th:nth-child(8),
+/* Payment Method */
+.orders-table th:nth-child(9),
+/* Payment Status */
+.orders-table th:nth-child(10),
+/* Refund */
+.orders-table td:nth-child(7),
+.orders-table td:nth-child(8),
+.orders-table td:nth-child(9),
+.orders-table td:nth-child(10) {
+  width: 400px;
+}
+
 /* Orders.css - Amazon-style, adapted from ProductVariants.css */
 :root {
   --amazon-primary: #f0c14b;
@@ -128,6 +143,7 @@
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -335,7 +351,8 @@
 .orders-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 1rem; /* giảm từ 1.25rem xuống */
+  font-size: 1rem;
+  /* giảm từ 1.25rem xuống */
   color: var(--amazon-text);
   table-layout: auto;
 }
@@ -344,11 +361,13 @@
   background-color: var(--amazon-secondary-bg);
   font-weight: 700;
   color: var(--amazon-text);
-  font-size: 1.1rem; /* giảm từ 1.35rem xuống */
+  font-size: 1.1rem;
+  /* giảm từ 1.35rem xuống */
 }
 
 .orders-table td {
-  font-size: 0.95rem; /* nhỏ hơn th để cân đối */
+  font-size: 0.95rem;
+  /* nhỏ hơn th để cân đối */
   vertical-align: middle;
 }
 
@@ -386,12 +405,14 @@
   vertical-align: middle;
 }
 
-.orders-table th:nth-child(1) { /* Index */
+.orders-table th:nth-child(1) {
+  /* Index */
   width: 5%;
   min-width: 40px;
 }
 
-.orders-table th:nth-child(2) { /* Order ID */
+.orders-table th:nth-child(2) {
+  /* Order ID */
   width: 5%;
   min-width: 80px;
 }
@@ -402,32 +423,38 @@
   overflow: hidden;
 }
 
-.orders-table th:nth-child(3) { /* Order Date */
+.orders-table th:nth-child(3) {
+  /* Order Date */
   width: 10%;
   min-width: 100px;
 }
 
-.orders-table th:nth-child(4) { /* Total */
+.orders-table th:nth-child(4) {
+  /* Total */
   width: 10%;
   min-width: 80px;
 }
 
-.orders-table th:nth-child(5) { /* Order Status */
+.orders-table th:nth-child(5) {
+  /* Order Status */
   width: 12%;
   min-width: 80px;
 }
 
-.orders-table th:nth-child(6) { /* Payment Status */
+.orders-table th:nth-child(6) {
+  /* Payment Status */
   width: 12%;
   min-width: 80px;
 }
 
-.orders-table th:nth-child(7) { /* Shipping Status */
+.orders-table th:nth-child(7) {
+  /* Shipping Status */
   width: 12%;
   min-width: 80px;
 }
 
-.orders-table th:nth-child(8) { /* Actions */
+.orders-table th:nth-child(8) {
+  /* Actions */
   width: auto;
   min-width: 120px;
 }
@@ -667,6 +694,7 @@
 
 /* Responsive adjustments for table and filters */
 @media (max-width: 1024px) {
+
   .orders-table th,
   .orders-table td {
     padding: 10px 6px;
@@ -679,61 +707,80 @@
   .orders-container {
     padding: 8px;
   }
+
   .orders-header {
     flex-direction: column;
     align-items: stretch;
   }
+
   .orders-header-actions {
     justify-content: center;
   }
+
   .orders-filters {
     padding: 8px;
   }
+
   .orders-filters-grid {
     grid-template-columns: 1fr;
     gap: 8px;
   }
+
   .orders-filter-actions {
     flex-direction: column;
     align-items: stretch;
   }
+
   .orders-clear-filters {
     align-self: center;
   }
+
   .orders-table-container {
     padding: 6px;
   }
-.orders-table th,
-.orders-table td {
-  font-size: 12px; /* nhỏ hơn bình thường */
-  white-space: nowrap; /* tránh xuống dòng */
-  text-overflow: ellipsis; /* thêm ... nếu quá dài */
-  overflow: hidden;
-  max-width: 150px; /* chỉnh lại độ rộng tối đa */
-}
+
+  .orders-table th,
+  .orders-table td {
+    font-size: 12px;
+    /* nhỏ hơn bình thường */
+    white-space: nowrap;
+    /* tránh xuống dòng */
+    text-overflow: ellipsis;
+    /* thêm ... nếu quá dài */
+    overflow: hidden;
+    max-width: 150px;
+    /* chỉnh lại độ rộng tối đa */
+  }
+
   .orders-details-section {
     padding: 8px;
   }
+
   .orders-detail-item {
     flex-direction: column;
     gap: 6px;
   }
+
   .orders-action-buttons {
     flex-direction: column;
     gap: 4px;
   }
+
   .orders-edit-select,
   .orders-status-select {
     width: 100%;
   }
+
   .orders-pagination {
     flex-direction: column;
     gap: 8px;
     text-align: center;
   }
+
   .orders-pagination-controls {
     justify-content: center;
   }
+
   .orders-pagination-pages {
     flex-wrap: wrap;
     justify-content: center;
@@ -744,26 +791,32 @@
   .orders-title {
     font-size: 1rem;
   }
+
   .orders-table {
     font-size: 0.75rem;
   }
+
   .orders-table th,
   .orders-table td {
     padding: 6px 2px;
     font-size: 0.75rem;
     min-width: 50px;
   }
+
   .orders-details-title {
     font-size: 0.85rem;
   }
+
   .orders-filters {
     padding: 4px;
   }
+
   .orders-filter-input,
   .orders-filter-select {
     padding: 4px 6px;
     font-size: 0.75rem;
   }
+
   .orders-filter-label {
     font-size: 0.75rem;
   }
@@ -773,20 +826,25 @@
   .orders-title {
     font-size: 1.25rem;
   }
+
   .orders-table {
     font-size: 0.8125rem;
   }
+
   .orders-details-title {
     font-size: 0.9375rem;
   }
+
   .orders-filters {
     padding: 8px;
   }
+
   .orders-filter-input,
   .orders-filter-select {
     padding: 6px 8px;
     font-size: 0.8125rem;
   }
+
   .orders-filter-label {
     font-size: 0.8125rem;
   }
@@ -794,6 +852,7 @@
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
+
   .orders-retry-button,
   .orders-filter-toggle,
   .orders-filter-input,
@@ -812,10 +871,12 @@
 }
 
 @media (prefers-contrast: high) {
+
   .orders-table-container,
   .orders-filters {
     border-width: 2px;
   }
+
   .orders-retry-button,
   .orders-filter-toggle,
   .orders-filter-input,
@@ -872,26 +933,35 @@
   background-color: var(--amazon-secondary-bg);
 }
 
-.orders-details-table th:nth-child(1), /* Product */
+.orders-details-table th:nth-child(1),
+/* Product */
 .orders-details-table td:nth-child(1) {
   width: 30%;
   min-width: 160px;
   text-align: left;
 }
-.orders-details-table th:nth-child(2), /* Color */
+
+.orders-details-table th:nth-child(2),
+/* Color */
 .orders-details-table td:nth-child(2),
-.orders-details-table th:nth-child(3), /* Size */
+.orders-details-table th:nth-child(3),
+/* Size */
 .orders-details-table td:nth-child(3),
-.orders-details-table th:nth-child(4), /* Quantity */
+.orders-details-table th:nth-child(4),
+/* Quantity */
 .orders-details-table td:nth-child(4),
-.orders-details-table th:nth-child(5), /* Unit Price */
+.orders-details-table th:nth-child(5),
+/* Unit Price */
 .orders-details-table td:nth-child(5),
-.orders-details-table th:nth-child(6), /* Total */
+.orders-details-table th:nth-child(6),
+/* Total */
 .orders-details-table td:nth-child(6) {
   width: 8%;
   min-width: 60px;
 }
-.orders-details-table th:nth-child(7), /* Feedback */
+
+.orders-details-table th:nth-child(7),
+/* Feedback */
 .orders-details-table td:nth-child(7) {
   width: 30%;
   min-width: 160px;
