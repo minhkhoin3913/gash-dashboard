@@ -73,12 +73,14 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   // So sánh dữ liệu chỉnh sửa với dữ liệu gốc
   const isOrderDataChanged = (order) => {
-    return (
-      editFormData.order_status !== order.order_status ||
-      editFormData.pay_status !== order.pay_status ||
-      editFormData.shipping_status !== order.shipping_status ||
-      (editFormData.refund_status && editFormData.refund_status !== order.refund_status)
-    );
+    // Compare all editable fields, treat undefined and empty string as equal
+    const fields = ["order_status", "pay_status", "shipping_status", "refund_status"];
+    for (let key of fields) {
+      const oldVal = order[key] ?? "";
+      const newVal = editFormData[key] ?? "";
+      if (oldVal !== newVal) return true;
+    }
+    return false;
   };
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -162,11 +164,8 @@ const Orders = () => {
       (method === "VNPAY" &&
         status === "cancelled" &&
         pay === "paid" &&
-        refund === "refunded") ||
-      (method === "VNPAY" &&
-        status === "cancelled" &&
-        pay === "paid" &&
-        refund === "not_applicable")
+        refund === "refunded")
+      // Trường hợp Cancelled, VNPAY, Paid vẫn cho update nên loại bỏ trường hợp này khỏi disable
     );
   };
 
@@ -223,7 +222,7 @@ const Orders = () => {
       const response = await fetchWithRetry(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("Orders API response:", response);
+      // console.log("Orders API response:", response);
       setOrders(
         Array.isArray(response)
           ? response.sort(
@@ -262,7 +261,10 @@ const Orders = () => {
 
   // Update filtered orders when orders change (pagination only)
   useEffect(() => {
-    setFilteredOrders(orders);
+    const sortedOrders = Array.isArray(orders)
+      ? [...orders].sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+      : [];
+    setFilteredOrders(sortedOrders);
   }, [orders]);
 
   // Pagination calculations
@@ -382,7 +384,32 @@ const Orders = () => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No authentication token found");
 
-      const response = await apiClient.put(`/orders/${orderId}`, updatedData, {
+      // Find the original order
+      const originalOrder = orders.find(o => o._id === orderId);
+      if (!originalOrder) throw new Error("Order not found");
+
+      // Only send changed fields
+      const changedFields = {};
+      ["order_status", "pay_status", "shipping_status", "refund_status"].forEach(key => {
+        const oldVal = originalOrder[key] ?? "";
+        const newVal = updatedData[key] ?? "";
+        if (oldVal !== newVal) {
+          changedFields[key] = newVal;
+        }
+      });
+      if (Object.keys(changedFields).length === 0) {
+        setToast({ type: "info", message: "No changes detected. Nothing to update." });
+        setEditingOrderId(null);
+        setEditFormData({
+          order_status: "",
+          pay_status: "",
+          shipping_status: "",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log("Order updated:", response.data);
@@ -409,7 +436,7 @@ const Orders = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [orders]);
 
   // Format price
   const formatPrice = useCallback((price) => {
@@ -635,7 +662,7 @@ const Orders = () => {
               ? "No orders found."
               : "No orders match the current filters."}
           </p>
-          {orders.length === 0 && (
+          {/* {orders.length === 0 && (
             <button
               className="orders-continue-shopping-button"
               onClick={() => navigate("/")}
@@ -643,7 +670,7 @@ const Orders = () => {
             >
               Continue Shopping
             </button>
-          )}
+          )} */}
         </div>
       ) : (
         <div className="orders-table-container">
@@ -861,6 +888,7 @@ const Orders = () => {
                                     pay_status: "",
                                     shipping_status: "",
                                   });
+                                  setToast({ type: "info", message: "No changes detected. Nothing to update." });
                                   return;
                                 }
                                 updateOrder(order._id, editFormData);
@@ -959,25 +987,36 @@ const Orders = () => {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {orderDetails
-                                        .filter((detail) => {
+                                      {(() => {
+                                        const details = orderDetails.filter((detail) => {
                                           const detailOrderId =
                                             typeof detail.order_id === "object"
                                               ? detail.order_id._id
                                               : detail.order_id;
                                           return detailOrderId === order._id;
-                                        })
-                                        .map((detail) => (
-                                          <tr key={detail._id} className="orders-detail-item-row">
-                                            <td>{detail.variant_id?.pro_id?.pro_name || "Unnamed Product"}</td>
-                                            <td>{detail.variant_id?.color_id?.color_name || "N/A"}</td>
-                                            <td>{detail.variant_id?.size_id?.size_name || "N/A"}</td>
-                                            <td style={{ textAlign: "center" }}>{detail.Quantity || 0}</td>
-                                            <td style={{ textAlign: "center" }}>{formatPrice(detail.UnitPrice)}</td>
-                                            <td style={{ textAlign: "center" }}>{formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}</td>
-                                            <td>{detail.feedback_details || "None"}</td>
-                                          </tr>
-                                        ))}
+                                        });
+                                        const total = details.reduce((sum, detail) => sum + (detail.UnitPrice || 0) * (detail.Quantity || 0), 0);
+                                        return (
+                                          <>
+                                            {details.map((detail) => (
+                                              <tr key={detail._id} className="orders-detail-item-row">
+                                                <td>{detail.variant_id?.pro_id?.pro_name || "Unnamed Product"}</td>
+                                                <td>{detail.variant_id?.color_id?.color_name || "N/A"}</td>
+                                                <td>{detail.variant_id?.size_id?.size_name || "N/A"}</td>
+                                                <td style={{ textAlign: "center" }}>{detail.Quantity || 0}</td>
+                                                <td style={{ textAlign: "center" }}>{formatPrice(detail.UnitPrice)}</td>
+                                                <td style={{ textAlign: "center" }}>{formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}</td>
+                                                <td>{detail.feedback_details || "None"}</td>
+                                              </tr>
+                                            ))}
+                                            <tr className="orders-detail-total-row">
+                                              <td colSpan={5} style={{ textAlign: "right", fontWeight: "bold" }}>Total for all products:</td>
+                                              <td style={{ textAlign: "center", fontWeight: "bold" }}>{formatPrice(total)}</td>
+                                              <td></td>
+                                            </tr>
+                                          </>
+                                        );
+                                      })()}
                                     </tbody>
                                   </table>
                                 </div>
