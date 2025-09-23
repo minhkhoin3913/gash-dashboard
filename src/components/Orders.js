@@ -1,10 +1,21 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import "../styles/Orders.css";
 import axios from "axios";
-import { useRef } from "react";
 import { io } from "socket.io-client";
+
+// Định dạng ngày dd/MM/yyyy
+function formatDateVN(dateStr) {
+  if (!dateStr) return "N/A";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "N/A";
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
 
 // Helper to determine which order status options should be enabled for update
 const getOrderStatusOptionDisabled = (currentStatus, optionValue) => {
@@ -710,7 +721,7 @@ const Orders = () => {
                       <td>{order.addressReceive || "N/A"}</td>
                       <td style={{ textAlign: "center" }}>
                         {order.orderDate
-                          ? new Date(order.orderDate).toLocaleDateString()
+                          ? formatDateVN(order.orderDate)
                           : "N/A"}
                       </td>
                       <td style={{ textAlign: "center" }}>
