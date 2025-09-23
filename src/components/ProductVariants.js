@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import "../styles/ProductVariants.css";
@@ -40,6 +40,100 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
       );
     }
   }
+};
+
+// Custom image dropdown with thumbnails for clearer selection
+const ImageDropdown = ({ images, value, onChange, placeholder = "Select Image (Optional)" }) => {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedImage = images.find((img) => img._id === value);
+
+  return (
+    <div ref={containerRef} className="pv-image-dropdown" style={{ position: "relative" }}>
+      <button
+        type="button"
+        className="product-variants-form-select"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", justifyContent: "space-between" }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {selectedImage ? (
+            <>
+              <img src={selectedImage.imageURL} alt="Selected" style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4 }} />
+              <span style={{ fontSize: 14 }}>Image</span>
+            </>
+          ) : (
+            <span style={{ opacity: 0.7 }}>{placeholder}</span>
+          )}
+        </span>
+        <span aria-hidden>▾</span>
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          className="pv-image-dropdown-menu"
+          style={{
+            position: "absolute",
+            zIndex: 1000,
+            top: "100%",
+            left: 0,
+            right: 0,
+            maxHeight: 260,
+            overflowY: "auto",
+            background: "#fff",
+            border: "1px solid #ddd",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            borderRadius: 6,
+            padding: 6,
+            marginTop: 4,
+            listStyle: "none"
+          }}
+        >
+          {images.map((img, idx) => (
+            <li key={img._id}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(img._id);
+                  setOpen(false);
+                }}
+                className="pv-image-dropdown-item"
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: 8,
+                  borderRadius: 4,
+                  background: value === img._id ? "#f0f9ff" : "transparent",
+                  border: 0,
+                  cursor: "pointer"
+                }}
+                title={`Image ${idx + 1}`}
+              >
+                <img src={img.imageURL} alt={`Image ${idx + 1}`} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} />
+                <span style={{ fontSize: 14 }}>{`Image ${idx + 1}`}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 };
 
 const ProductVariants = () => {
@@ -769,21 +863,12 @@ const ProductVariants = () => {
               <label htmlFor="new-image-id" className="product-variants-form-label">
                 Image
               </label>
-            <select
-              id="new-image-id"
+            <ImageDropdown
+              images={images}
               value={newVariantForm.image_id}
-                onChange={(e) =>
-                  handleNewVariantFieldChange("image_id", e.target.value)
-                }
-                className="product-variants-form-select"
-            >
-              <option value="">Select Image (Optional)</option>
-              {images.map((image) => (
-                <option key={image._id} value={image._id}>
-                    {image.imageURL}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => handleNewVariantFieldChange("image_id", val)}
+              placeholder="Select Image (Optional)"
+            />
           </div>
           </div>
 
@@ -892,21 +977,12 @@ const ProductVariants = () => {
                   </td>
                   <td>
                     {editingVariantId === variant._id ? (
-                      <select
+                      <ImageDropdown
+                        images={images}
                         value={editFormData.image_id}
-                        onChange={(e) =>
-                          handleEditFieldChange("image_id", e.target.value)
-                        }
-                        className="product-variants-edit-select"
-                        aria-label="Image"
-                      >
-                        <option value="">No Image</option>
-                        {images.map((image) => (
-                          <option key={image._id} value={image._id}>
-                            {image.imageURL}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => handleEditFieldChange("image_id", val)}
+                        placeholder="Select Image (Optional)"
+                      />
                     ) : variant.image_id?.imageURL ? (
                       <img
                         src={variant.image_id.imageURL}
