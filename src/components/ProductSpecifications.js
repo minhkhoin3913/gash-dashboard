@@ -261,8 +261,8 @@ const ProductSpecifications = () => {
 
     const endpoint = `/specifications/${type.slice(0, -1)}/${id}`;
 
-    if (type === 'images' && (!data.pro_id || (!editImageFile && !data.imageURL))) {
-      setError('Please select a product and upload an image file');
+    if (type === 'images' && !data.pro_id) {
+      setError('Please select a product');
       setLoading(false);
       return;
     }
@@ -275,18 +275,26 @@ const ProductSpecifications = () => {
     try {
       const token = localStorage.getItem('token');
       let imageURLToUse = data.imageURL;
+      
       if (type === 'images') {
-        // Chỉ upload khi người dùng chọn file mới; nếu không, dùng URL hiện tại
+        // Upload new image first if user selected a new file
         if (editImageFile) {
           imageURLToUse = await uploadSingleImage(editImageFile);
-          if (!imageURLToUse) throw new Error('Image upload failed');
+          if (!imageURLToUse) {
+            throw new Error('Image upload failed');
+          }
         }
-        if (!imageURLToUse) throw new Error('Please upload an image');
+        // If no new image file and no existing imageURL, that's an error
+        if (!imageURLToUse) {
+          throw new Error('Please upload an image');
+        }
       }
+      
       const payload = type === 'images' ? { ...data, imageURL: imageURLToUse } : { [`${type.slice(0, -1)}_name`]: data.content };
       const response = await apiClient.put(endpoint, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       if (type === 'images') {
         const updatedImage = {
           ...response.data.image,
@@ -309,13 +317,13 @@ const ProductSpecifications = () => {
         setEditImagePreview('');
       }
     } catch (err) {
-      setError(err.response?.data?.message || `Failed to update ${type.slice(0, -1)}`);
-      setToast({ type: 'error', message: err.response?.data?.message || `Failed to update ${type.slice(0, -1)}` });
+      setError(err.response?.data?.message || err.message || `Failed to update ${type.slice(0, -1)}`);
+      setToast({ type: 'error', message: err.response?.data?.message || err.message || `Failed to update ${type.slice(0, -1)}` });
       console.error(`Update ${type} error:`, err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [editImageFile, uploadSingleImage]);
 
   // Delete specification
   const deleteSpecification = useCallback(async (type, id) => {
@@ -646,13 +654,18 @@ const ProductSpecifications = () => {
                               onChange={handleEditImageFileChange}
                               aria-label="Upload new image"
                             />
-                            {editImagePreview && (
+                            {(editImagePreview || image.imageURL) && (
                               <div className="specifications-image-preview">
                                 <img
-                                  src={editImagePreview}
-                                  alt="Preview"
+                                  src={editImagePreview || image.imageURL}
+                                  alt={editImagePreview ? "New image preview" : "Current image"}
                                   className="specifications-image"
                                 />
+                                {editImagePreview && (
+                                  <div className="specifications-image-label">
+                                    <small>New Image Preview</small>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
