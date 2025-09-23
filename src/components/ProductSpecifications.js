@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import '../styles/ProductSpecifications.css';
 import axios from 'axios';
 
-// API client with interceptors
+//API client with interceptors
 const apiClient = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
   timeout: 10000,
@@ -224,7 +224,14 @@ const ProductSpecifications = () => {
       const response = await apiClient.post(endpoint, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (type === 'images') setImages(prev => [...prev, response.data.image]);
+      if (type === 'images') {
+        const newImage = {
+          ...response.data.image,
+          // Cache-bust so the newest image is shown immediately
+          imageURL: `${response.data.image.imageURL}?v=${Date.now()}`,
+        };
+        setImages(prev => [...prev, newImage]);
+      }
       if (type === 'colors') setColors(prev => [...prev, response.data.color]);
       if (type === 'sizes') setSizes(prev => [...prev, response.data.size]);
       setToast({ type: 'success', message: `${type.capitalize()} created successfully` });
@@ -254,7 +261,7 @@ const ProductSpecifications = () => {
 
     const endpoint = `/specifications/${type.slice(0, -1)}/${id}`;
 
-    if (type === 'images' && (!data.pro_id || (!editImageFile && !editFormData.imageURL))) {
+    if (type === 'images' && (!data.pro_id || (!editImageFile && !data.imageURL))) {
       setError('Please select a product and upload an image file');
       setLoading(false);
       return;
@@ -269,16 +276,24 @@ const ProductSpecifications = () => {
       const token = localStorage.getItem('token');
       let imageURLToUse = data.imageURL;
       if (type === 'images') {
-        if (!editImageFile && !imageURLToUse) throw new Error('Please upload an image');
-        imageURLToUse = await uploadSingleImage(editImageFile);
-        if (!imageURLToUse) throw new Error('Image upload failed');
+        // Chỉ upload khi người dùng chọn file mới; nếu không, dùng URL hiện tại
+        if (editImageFile) {
+          imageURLToUse = await uploadSingleImage(editImageFile);
+          if (!imageURLToUse) throw new Error('Image upload failed');
+        }
+        if (!imageURLToUse) throw new Error('Please upload an image');
       }
       const payload = type === 'images' ? { ...data, imageURL: imageURLToUse } : { [`${type.slice(0, -1)}_name`]: data.content };
       const response = await apiClient.put(endpoint, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (type === 'images') {
-        setImages(prev => prev.map(item => item._id === id ? response.data.image : item));
+        const updatedImage = {
+          ...response.data.image,
+          // Cache-bust so the newest image is shown immediately
+          imageURL: `${response.data.image.imageURL}?v=${Date.now()}`,
+        };
+        setImages(prev => prev.map(item => item._id === id ? updatedImage : item));
       }
       if (type === 'colors') {
         setColors(prev => prev.map(item => item._id === id ? response.data.color : item));
@@ -662,7 +677,7 @@ const ProductSpecifications = () => {
                               onClick={() => handleUpdateSubmit('images', image._id)}
                               className="specifications-update-button"
                               aria-label={`Update image ${image._id}`}
-                              disabled={loading || !editFormData.pro_id || !editFormData.imageURL}
+                              disabled={loading || !editFormData.pro_id || (!editFormData.imageURL && !editImageFile)}
                             >
                               Update
                             </button>

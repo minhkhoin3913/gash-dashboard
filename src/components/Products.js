@@ -272,10 +272,13 @@ const Products = () => {
   const handleNewImageFileChange = useCallback((e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
+      // Validate file type - must be an image
       if (!file.type.startsWith('image/')) {
-        setToast({ type: 'error', message: 'Please select a valid image file' });
+        setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
         setNewProductImageFile(null);
         setNewProductImagePreview('');
+        // Reset the file input
+        e.target.value = '';
         return;
       }
       setNewProductImageFile(file);
@@ -290,10 +293,13 @@ const Products = () => {
   const handleEditImageFileChange = useCallback((e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
+      // Validate file type - must be an image
       if (!file.type.startsWith('image/')) {
-        setToast({ type: 'error', message: 'Please select a valid image file' });
+        setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
         setEditImageFile(null);
         setEditImagePreview('');
+        // Reset the file input
+        e.target.value = '';
         return;
       }
       setEditImageFile(file);
@@ -323,6 +329,13 @@ const Products = () => {
     }
     if (!newProductImageFile) {
       setError('Please upload a product image');
+      setLoading(false);
+      return;
+    }
+    // Additional validation to ensure file is an image
+    if (!newProductImageFile.type.startsWith('image/')) {
+      setError('Product update failed, information remains unchanged');
+      setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
       setLoading(false);
       return;
     }
@@ -385,6 +398,13 @@ const Products = () => {
       setLoading(false);
       return;
     }
+    // Additional validation to ensure file is an image if editing image
+    if (editImageFile && !editImageFile.type.startsWith('image/')) {
+      setError('Product update failed, information remains unchanged');
+      setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
+      setLoading(false);
+      return;
+    }
 
     try {
       const token = localStorage.getItem('token');
@@ -407,6 +427,7 @@ const Products = () => {
       // Normalize the response to match the populated format
       const updatedProduct = {
         ...response.data.product,
+        imageURL: imageURLToUse, // Ensure the new image URL is used
         cat_id: categories.find(cat => cat._id === editFormData.cat_id) || { _id: editFormData.cat_id, cat_name: 'N/A' },
       };
       setProducts(prev =>
@@ -433,7 +454,7 @@ const Products = () => {
     } finally {
       setLoading(false);
     }
-  }, [editFormData, categories]);
+  }, [editFormData, categories, editImageFile, uploadSingleImage]);
 
   // Delete product
   const deleteProduct = useCallback(async (productId) => {
@@ -952,15 +973,23 @@ const Products = () => {
                             onChange={handleEditImageFileChange}
                             aria-label="Upload new product image"
                           />
-                          {editImagePreview && (
+                          {editImagePreview ? (
                             <div className="products-image-preview">
                               <img
                                 src={editImagePreview}
-                                alt="Preview"
+                                alt="New image preview"
                                 className="products-image"
                               />
                             </div>
-                          )}
+                          ) : product.imageURL ? (
+                            <div className="products-image-preview">
+                              <img
+                                src={product.imageURL}
+                                alt="Current image"
+                                className="products-image"
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       ) : product.imageURL ? (
                         <img
