@@ -1,10 +1,22 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import RefundProofModal from "./RefundProofModal";
+
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import "../styles/Orders.css";
 import axios from "axios";
-import { useRef } from "react";
 import { io } from "socket.io-client";
+
+// Định dạng ngày dd/MM/yyyy
+function formatDateVN(dateStr) {
+  if (!dateStr) return "N/A";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "N/A";
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
 
 // Helper to determine which order status options should be enabled for update
 const getOrderStatusOptionDisabled = (currentStatus, optionValue) => {
@@ -69,6 +81,20 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 };
 
 const Orders = () => {
+  // State cho modal ảnh refund proof
+  const [showRefundProofModal, setShowRefundProofModal] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState("");
+  // State cho upload refund proof
+  const [refundProofFile, setRefundProofFile] = useState(null);
+  const [refundProofPreview, setRefundProofPreview] = useState("");
+  const [uploadingRefundProof, setUploadingRefundProof] = useState(false);
+  // Chỉ preview khi chọn file, chưa upload
+  const handleRefundProofChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setRefundProofFile(file);
+    setRefundProofPreview(URL.createObjectURL(file));
+  };
   const { user, isAuthLoading } = useContext(AuthContext);
   const [orders, setOrders] = useState([]);
   // So sánh dữ liệu chỉnh sửa với dữ liệu gốc
@@ -90,6 +116,7 @@ const Orders = () => {
     order_status: "",
     pay_status: "",
     shipping_status: "",
+    refund_proof: ""
   });
 
   // Filter states
@@ -388,44 +415,106 @@ const Orders = () => {
       const originalOrder = orders.find(o => o._id === orderId);
       if (!originalOrder) throw new Error("Order not found");
 
-      // Only send changed fields
-      const changedFields = {};
-      ["order_status", "pay_status", "shipping_status", "refund_status"].forEach(key => {
-        const oldVal = originalOrder[key] ?? "";
-        const newVal = updatedData[key] ?? "";
-        if (oldVal !== newVal) {
-          changedFields[key] = newVal;
+      // Helper to build changed fields
+      const buildChangedFields = (refundProofUrl) => {
+        const changedFields = {};
+        ["order_status", "pay_status", "shipping_status", "refund_status"].forEach(key => {
+          const oldVal = originalOrder[key] ?? "";
+          const newVal = updatedData[key] ?? "";
+          if (oldVal !== newVal) {
+            changedFields[key] = newVal;
+          }
+        });
+        // Nếu có refundProofUrl mới thì gửi lên
+        if (refundProofUrl && refundProofUrl !== originalOrder.refund_proof) {
+          changedFields.refund_proof = refundProofUrl;
         }
-      });
-      if (Object.keys(changedFields).length === 0) {
-        setToast({ type: "info", message: "No changes detected. Nothing to update." });
+        return changedFields;
+      };
+
+      // Nếu có file refundProofFile thì upload trước
+      if (refundProofFile) {
+        setUploadingRefundProof(true);
+        const formData = new FormData();
+        formData.append("image", refundProofFile);
+        let uploadResult;
+        try {
+          uploadResult = await axios.post("http://localhost:5000/upload", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        } catch (err) {
+          setToast({ type: "error", message: "Upload refund proof thất bại!" });
+          setUploadingRefundProof(false);
+          setLoading(false);
+          return;
+        }
+        setUploadingRefundProof(false);
+        if (uploadResult.data && uploadResult.data.url) {
+          // Sau khi upload thành công, gọi update với refundProofUrl
+          const refundProofUrl = uploadResult.data.url;
+          const changedFields = buildChangedFields(refundProofUrl);
+          if (Object.keys(changedFields).length === 0) {
+            setToast({ type: "info", message: "No changes detected. Nothing to update." });
+            setEditingOrderId(null);
+            setEditFormData({
+              order_status: "",
+              pay_status: "",
+              shipping_status: "",
+            });
+            setLoading(false);
+            return;
+          }
+          const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setOrders((prev) =>
+            prev.map((order) =>
+              order._id === orderId ? { ...order, ...response.data } : order
+            )
+          );
+          setToast({ type: "success", message: "Order updated successfully" });
+          setEditingOrderId(null);
+          setEditFormData({
+            order_status: "",
+            pay_status: "",
+            shipping_status: "",
+          });
+        } else {
+          setToast({ type: "error", message: "Upload refund proof thất bại!" });
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Không có file mới, chỉ update các trường khác
+        const refundProofUrl = updatedData.refund_proof;
+        const changedFields = buildChangedFields(refundProofUrl);
+        if (Object.keys(changedFields).length === 0) {
+          setToast({ type: "info", message: "No changes detected. Nothing to update." });
+          setEditingOrderId(null);
+          setEditFormData({
+            order_status: "",
+            pay_status: "",
+            shipping_status: "",
+          });
+          setLoading(false);
+          return;
+        }
+        const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setOrders((prev) =>
+          prev.map((order) =>
+            order._id === orderId ? { ...order, ...response.data } : order
+          )
+        );
+        setToast({ type: "success", message: "Order updated successfully" });
         setEditingOrderId(null);
         setEditFormData({
           order_status: "",
           pay_status: "",
           shipping_status: "",
         });
-        setLoading(false);
-        return;
       }
-
-      const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("Order updated:", response.data);
-      setOrders((prev) =>
-        prev.map((order) =>
-          order._id === orderId ? { ...order, ...response.data } : order
-        )
-      );
-
-      setToast({ type: "success", message: "Order updated successfully" });
-      setEditingOrderId(null);
-      setEditFormData({
-        order_status: "",
-        pay_status: "",
-        shipping_status: "",
-      });
     } catch (err) {
       setError(err.message || "Failed to update order");
       setToast({
@@ -436,7 +525,7 @@ const Orders = () => {
     } finally {
       setLoading(false);
     }
-  }, [orders]);
+  }, [orders, refundProofFile]);
 
   // Format price
   const formatPrice = useCallback((price) => {
@@ -710,7 +799,7 @@ const Orders = () => {
                       <td>{order.addressReceive || "N/A"}</td>
                       <td style={{ textAlign: "center" }}>
                         {order.orderDate
-                          ? new Date(order.orderDate).toLocaleDateString()
+                          ? formatDateVN(order.orderDate)
                           : "N/A"}
                       </td>
                       <td style={{ textAlign: "center" }}>
@@ -853,26 +942,46 @@ const Orders = () => {
                                 );
                               })}
                             </select>
-                            {order.refund_proof ? (
+                            {/* Nếu chọn refunded thì hiển thị form upload ảnh */}
+                            {(editFormData.refund_status === "refunded" || order.refund_status === "refunded") && (
+                              <div style={{ marginTop: 8 }}>
+                                {/* <label htmlFor={`refund-proof-upload-${order._id}`}>Upload refund proof:</label> */}
+                                <input
+                                  id={`refund-proof-upload-${order._id}`}
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleRefundProofChange}
+                                  disabled={uploadingRefundProof}
+                                  style={{ marginLeft: 8 }}
+                                />
+                                {/* {uploadingRefundProof && <span style={{ color: '#888', marginLeft: 8 }}>Đang upload...</span>} */}
+                                {/* Preview ảnh */}
+                                {(refundProofPreview || editFormData.refund_proof) && (
+                                  <div style={{ marginTop: 8 }}>
+                                    {/* <span>Preview:</span><br /> */}
+                                    <img
+                                      src={refundProofPreview || editFormData.refund_proof}
+                                      alt="Refund proof preview"
+                                      style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc', marginTop: 4 }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Nếu đã có proof thì hiển thị url */}
+                            {order.refund_proof && (
                               <>
                                 <br />
-                                <span style={{ color: "#888" }}>
-                                  Proof: {order.refund_proof}
-                                </span>
+                                <div style={{ marginTop: 4 }}>
+                                  <img src={order.refund_proof} alt="Refund proof" style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc' }} />
+                                </div>
                               </>
-                            ) : null}
+                            )}
                           </>
                         ) : (
                           <>
                             {order.refund_status ? displayStatus(order.refund_status) : "N/A"}
-                            {order.refund_proof ? (
-                              <>
-                                <br />
-                                <span style={{ color: "#888" }}>
-                                  Proof: {order.refund_proof}
-                                </span>
-                              </>
-                            ) : null}
+
                           </>
                         )}
                       </td>
@@ -881,6 +990,7 @@ const Orders = () => {
                           <div className="orders-action-buttons">
                             <button
                               onClick={() => {
+                                // Validate required fields
                                 if (!isOrderDataChanged(order)) {
                                   setEditingOrderId(null);
                                   setEditFormData({
@@ -889,6 +999,13 @@ const Orders = () => {
                                     shipping_status: "",
                                   });
                                   setToast({ type: "info", message: "No changes detected. Nothing to update." });
+                                  return;
+                                }
+                                // Nếu refund_status là refunded, phải có ảnh (file mới hoặc đã có refund_proof)
+                                const isRefunded = (editFormData.refund_status === "refunded" || order.refund_status === "refunded");
+                                const hasProof = refundProofFile || editFormData.refund_proof || order.refund_proof;
+                                if (isRefunded && !hasProof) {
+                                  setToast({ type: "error", message: "Please select refund confirmation photo!" });
                                   return;
                                 }
                                 updateOrder(order._id, editFormData);
@@ -941,6 +1058,7 @@ const Orders = () => {
                                   order_status: order.order_status,
                                   pay_status: order.pay_status,
                                   shipping_status: order.shipping_status,
+                                  refund_proof: order.refund_proof || ""
                                 });
                               }}
                               className="orders-edit-button"
@@ -1037,7 +1155,27 @@ const Orders = () => {
                                     </tr>
                                     <tr>
                                       <td style={{ textAlign: 'left', width: '180px' }}><strong>Refund:</strong></td>
-                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.refund_status)}{order.refund_proof ? (<span style={{ color: '#888' }}> (Proof: {order.refund_proof})</span>) : null}</td>
+                                      <td style={{ textAlign: 'left' }}>
+                                        {displayStatus(order.refund_status)}
+                                        {order.refund_proof ? (
+                                          <div style={{ marginTop: 4 }}>
+                                            <img
+                                              src={order.refund_proof}
+                                              alt="Refund proof"
+                                              style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc', cursor: 'pointer' }}
+                                              onClick={() => {
+                                                setModalImageUrl(order.refund_proof);
+                                                setShowRefundProofModal(true);
+                                              }}
+                                            />
+                                          </div>
+                                        ) : null}
+                                        {/* Modal hiển thị ảnh refund proof to */}
+                                        <RefundProofModal
+                                          imageUrl={showRefundProofModal ? modalImageUrl : ""}
+                                          onClose={() => setShowRefundProofModal(false)}
+                                        />
+                                      </td>
                                     </tr>
                                   </tbody>
                                 </table>
