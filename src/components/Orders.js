@@ -945,7 +945,7 @@ const Orders = () => {
                             {/* Nếu chọn refunded thì hiển thị form upload ảnh */}
                             {(editFormData.refund_status === "refunded" || order.refund_status === "refunded") && (
                               <div style={{ marginTop: 8 }}>
-                                <label htmlFor={`refund-proof-upload-${order._id}`}>Upload refund proof:</label>
+                                {/* <label htmlFor={`refund-proof-upload-${order._id}`}>Upload refund proof:</label> */}
                                 <input
                                   id={`refund-proof-upload-${order._id}`}
                                   type="file"
@@ -954,11 +954,11 @@ const Orders = () => {
                                   disabled={uploadingRefundProof}
                                   style={{ marginLeft: 8 }}
                                 />
-                                {uploadingRefundProof && <span style={{ color: '#888', marginLeft: 8 }}>Đang upload...</span>}
+                                {/* {uploadingRefundProof && <span style={{ color: '#888', marginLeft: 8 }}>Đang upload...</span>} */}
                                 {/* Preview ảnh */}
                                 {(refundProofPreview || editFormData.refund_proof) && (
                                   <div style={{ marginTop: 8 }}>
-                                    <span>Preview:</span><br />
+                                    {/* <span>Preview:</span><br /> */}
                                     <img
                                       src={refundProofPreview || editFormData.refund_proof}
                                       alt="Refund proof preview"
@@ -990,6 +990,7 @@ const Orders = () => {
                           <div className="orders-action-buttons">
                             <button
                               onClick={() => {
+                                // Validate required fields
                                 if (!isOrderDataChanged(order)) {
                                   setEditingOrderId(null);
                                   setEditFormData({
@@ -998,6 +999,13 @@ const Orders = () => {
                                     shipping_status: "",
                                   });
                                   setToast({ type: "info", message: "No changes detected. Nothing to update." });
+                                  return;
+                                }
+                                // Nếu refund_status là refunded, phải có ảnh (file mới hoặc đã có refund_proof)
+                                const isRefunded = (editFormData.refund_status === "refunded" || order.refund_status === "refunded");
+                                const hasProof = refundProofFile || editFormData.refund_proof || order.refund_proof;
+                                if (isRefunded && !hasProof) {
+                                  setToast({ type: "error", message: "Please select refund confirmation photo!" });
                                   return;
                                 }
                                 updateOrder(order._id, editFormData);
