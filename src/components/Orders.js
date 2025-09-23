@@ -1,3 +1,4 @@
+import RefundProofModal from "./RefundProofModal";
 
 import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -80,6 +81,37 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 };
 
 const Orders = () => {
+  // State cho modal ảnh refund proof
+  const [showRefundProofModal, setShowRefundProofModal] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState("");
+  // State cho upload refund proof
+  const [refundProofFile, setRefundProofFile] = useState(null);
+  const [refundProofPreview, setRefundProofPreview] = useState("");
+  const [uploadingRefundProof, setUploadingRefundProof] = useState(false);
+  // Xử lý upload ảnh refund proof
+  const handleRefundProofChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setRefundProofFile(file);
+    setRefundProofPreview(URL.createObjectURL(file));
+    setUploadingRefundProof(true);
+    const formData = new FormData();
+    formData.append("image", file);
+    try {
+      const res = await axios.post("http://localhost:5000/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (res.data && res.data.url) {
+        setEditFormData((prev) => ({ ...prev, refund_proof: res.data.url }));
+        setToast({ type: "success", message: "Upload refund proof thành công!" });
+      } else {
+        setToast({ type: "error", message: "Upload thất bại!" });
+      }
+    } catch (err) {
+      setToast({ type: "error", message: "Upload thất bại!" });
+    }
+    setUploadingRefundProof(false);
+  };
   const { user, isAuthLoading } = useContext(AuthContext);
   const [orders, setOrders] = useState([]);
   // So sánh dữ liệu chỉnh sửa với dữ liệu gốc
@@ -101,6 +133,7 @@ const Orders = () => {
     order_status: "",
     pay_status: "",
     shipping_status: "",
+    refund_proof: ""
   });
 
   // Filter states
@@ -401,7 +434,7 @@ const Orders = () => {
 
       // Only send changed fields
       const changedFields = {};
-      ["order_status", "pay_status", "shipping_status", "refund_status"].forEach(key => {
+      ["order_status", "pay_status", "shipping_status", "refund_status", "refund_proof"].forEach(key => {
         const oldVal = originalOrder[key] ?? "";
         const newVal = updatedData[key] ?? "";
         if (oldVal !== newVal) {
@@ -864,26 +897,46 @@ const Orders = () => {
                                 );
                               })}
                             </select>
-                            {order.refund_proof ? (
+                            {/* Nếu chọn refunded thì hiển thị form upload ảnh */}
+                            {(editFormData.refund_status === "refunded" || order.refund_status === "refunded") && (
+                              <div style={{ marginTop: 8 }}>
+                                <label htmlFor={`refund-proof-upload-${order._id}`}>Upload refund proof:</label>
+                                <input
+                                  id={`refund-proof-upload-${order._id}`}
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleRefundProofChange}
+                                  disabled={uploadingRefundProof}
+                                  style={{ marginLeft: 8 }}
+                                />
+                                {uploadingRefundProof && <span style={{ color: '#888', marginLeft: 8 }}>Đang upload...</span>}
+                                {/* Preview ảnh */}
+                                {(refundProofPreview || editFormData.refund_proof) && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <span>Preview:</span><br />
+                                    <img
+                                      src={refundProofPreview || editFormData.refund_proof}
+                                      alt="Refund proof preview"
+                                      style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc', marginTop: 4 }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Nếu đã có proof thì hiển thị url */}
+                            {order.refund_proof && (
                               <>
                                 <br />
-                                <span style={{ color: "#888" }}>
-                                  Proof: {order.refund_proof}
-                                </span>
+                                <div style={{ marginTop: 4 }}>
+                                  <img src={order.refund_proof} alt="Refund proof" style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc' }} />
+                                </div>
                               </>
-                            ) : null}
+                            )}
                           </>
                         ) : (
                           <>
                             {order.refund_status ? displayStatus(order.refund_status) : "N/A"}
-                            {order.refund_proof ? (
-                              <>
-                                <br />
-                                <span style={{ color: "#888" }}>
-                                  Proof: {order.refund_proof}
-                                </span>
-                              </>
-                            ) : null}
+
                           </>
                         )}
                       </td>
@@ -952,6 +1005,7 @@ const Orders = () => {
                                   order_status: order.order_status,
                                   pay_status: order.pay_status,
                                   shipping_status: order.shipping_status,
+                                  refund_proof: order.refund_proof || ""
                                 });
                               }}
                               className="orders-edit-button"
@@ -1048,7 +1102,27 @@ const Orders = () => {
                                     </tr>
                                     <tr>
                                       <td style={{ textAlign: 'left', width: '180px' }}><strong>Refund:</strong></td>
-                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.refund_status)}{order.refund_proof ? (<span style={{ color: '#888' }}> (Proof: {order.refund_proof})</span>) : null}</td>
+                                      <td style={{ textAlign: 'left' }}>
+                                        {displayStatus(order.refund_status)}
+                                        {order.refund_proof ? (
+                                          <div style={{ marginTop: 4 }}>
+                                            <img
+                                              src={order.refund_proof}
+                                              alt="Refund proof"
+                                              style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc', cursor: 'pointer' }}
+                                              onClick={() => {
+                                                setModalImageUrl(order.refund_proof);
+                                                setShowRefundProofModal(true);
+                                              }}
+                                            />
+                                          </div>
+                                        ) : null}
+                                        {/* Modal hiển thị ảnh refund proof to */}
+                                        <RefundProofModal
+                                          imageUrl={showRefundProofModal ? modalImageUrl : ""}
+                                          onClose={() => setShowRefundProofModal(false)}
+                                        />
+                                      </td>
                                     </tr>
                                   </tbody>
                                 </table>
