@@ -17,7 +17,7 @@ const getOrderStatusOptionDisabled = (currentStatus, optionValue) => {
   if (currentStatus === "pending") {
     allowedStatuses = ["confirmed", "shipping", "delivered", "cancelled"];
   } else if (currentStatus === "confirmed") {
-    allowedStatuses = ["shipping", "delivered"]; // 'cancelled' disabled unless pending
+    allowedStatuses = ["shipping", "delivered"];
   } else if (currentStatus === "shipping") {
     allowedStatuses = ["delivered"];
   }
@@ -99,8 +99,8 @@ const Orders = () => {
     shippingStatus: "",
     minPrice: "",
     maxPrice: "",
-    searchQuery: "",
   });
+  const [searchText, setSearchText] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   // Pagination states
@@ -207,7 +207,6 @@ const Orders = () => {
       if (!token) throw new Error("No authentication token found");
       // Build query params
       const params = {};
-      if (filters.searchQuery) params.q = filters.searchQuery;
       if (filters.dateFrom) params.dateFrom = filters.dateFrom;
       if (filters.dateTo) params.dateTo = filters.dateTo;
       if (filters.orderStatus) params.order_status = filters.orderStatus;
@@ -232,13 +231,34 @@ const Orders = () => {
           )
           : []
       );
-      // setCurrentPage(1); // Reset to first page on new fetch
     } catch (err) {
       setError(err.message || "Failed to load orders");
     } finally {
       setLoading(false);
     }
   }, [user, filters]);
+
+  // Search handler FE: lọc orders theo name, addressReceive, phone
+  // Search realtime: lọc khi nhập
+  useEffect(() => {
+    if (!orders || !Array.isArray(orders)) return;
+    const keyword = searchText.trim().toLowerCase();
+    if (!keyword) {
+      setFilteredOrders(orders);
+      return;
+    }
+    const filtered = orders.filter(order => {
+      const name = (order.acc_id?.name || "").toLowerCase();
+      const address = (order.addressReceive || "").toLowerCase();
+      const phone = (order.phone || order.acc_id?.phone || "").toLowerCase();
+      return (
+        name.includes(keyword) ||
+        address.includes(keyword) ||
+        phone.includes(keyword)
+      );
+    });
+    setFilteredOrders(filtered);
+  }, [orders, searchText]);
 
   // Update filtered orders when orders change (pagination only)
   useEffect(() => {
@@ -429,40 +449,37 @@ const Orders = () => {
 
       <div className="orders-header">
         <h1 className="orders-title">Admin Order Management</h1>
-        <div className="orders-header-actions">
-          <button
-            className="orders-filter-toggle"
-            onClick={toggleFilters}
-            aria-label="Toggle filters"
-          >
-            {showFilters ? "Hide Filters" : "Show Filters"}
-          </button>
-        </div>
+        {/* Di chuyển nút filter xuống dưới search */}
+        <div style={{ marginBottom: 16 }}></div>
+      </div>
+
+      {/* Search Section */}
+      <div className="orders-search-bar" style={{ marginBottom: 16 }}>
+        <input
+          type="text"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          placeholder="Search by name, phone, address..."
+          className="orders-filter-input"
+          style={{ width: 300 }}
+        />
+      </div>
+
+      {/* Nút filter chuyển xuống dưới search */}
+      <div className="orders-header-actions" style={{ marginBottom: 16 }}>
+        <button
+          className="orders-filter-toggle"
+          onClick={toggleFilters}
+          aria-label="Toggle filters"
+        >
+          {showFilters ? "Hide Filters" : "Show Filters"}
+        </button>
       </div>
 
       {/* Filter Section */}
       {showFilters && (
         <div className="orders-filters">
-          <h2 className="orders-search-title">Search Orders</h2>
           <div className="orders-filters-grid">
-            <div className="orders-search-section">
-              {/* Search Query */}
-              <div className="orders-filter-group">
-                <label htmlFor="searchQuery" className="orders-filter-label">
-                  Search
-                </label>
-                <input
-                  type="text"
-                  id="searchQuery"
-                  value={filters.searchQuery}
-                  onChange={(e) =>
-                    handleFilterChange("searchQuery", e.target.value)
-                  }
-                  placeholder="Search by order ID, status, address, phone..."
-                  className="orders-filter-input"
-                />
-              </div>
-            </div>
             <div className="orders-filter-options">
               {/* Date Range */}
               <div className="orders-filter-group">
@@ -637,6 +654,7 @@ const Orders = () => {
                 <th>Order ID</th>
                 <th>Name</th>
                 <th>Phone</th>
+                <th>Address</th>
                 <th>Order Date</th>
                 <th>Total</th>
                 <th>Order Status</th>
@@ -662,6 +680,7 @@ const Orders = () => {
                       </td>
                       <td>{order.acc_id?.name || "N/A"}</td>
                       <td>{order.phone || order.acc_id?.phone || "N/A"}</td>
+                      <td>{order.addressReceive || "N/A"}</td>
                       <td style={{ textAlign: "center" }}>
                         {order.orderDate
                           ? new Date(order.orderDate).toLocaleDateString()
@@ -915,9 +934,7 @@ const Orders = () => {
                       <tr className="orders-details-row">
                         <td colSpan="8" className="orders-details-cell">
                           <div className="orders-details-section">
-                            <h2 className="orders-details-title">
-                              Order Details
-                            </h2>
+                            <h2 className="orders-details-title">Order Details</h2>
                             {orderDetails.filter((detail) => {
                               const detailOrderId =
                                 typeof detail.order_id === "object"
@@ -925,69 +942,67 @@ const Orders = () => {
                                   : detail.order_id;
                               return detailOrderId === order._id;
                             }).length === 0 ? (
-                              <p className="orders-no-details">
-                                No details available for this order.
-                              </p>
+                              <p className="orders-no-details">No details available for this order.</p>
                             ) : (
-                              <div className="orders-details-table-container">
-                                <table className="orders-details-table">
-                                  <thead>
-                                    <tr>
-                                      <th>Product</th>
-                                      <th>Color</th>
-                                      <th>Size</th>
-                                      <th>Quantity</th>
-                                      <th>Unit Price</th>
-                                      <th>Total</th>
-                                      <th>Feedback</th>
-                                    </tr>
-                                  </thead>
+                              <>
+                                <div className="orders-details-table-container">
+                                  <table className="orders-details-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Product</th>
+                                        <th>Color</th>
+                                        <th>Size</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Total</th>
+                                        <th>Feedback</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {orderDetails
+                                        .filter((detail) => {
+                                          const detailOrderId =
+                                            typeof detail.order_id === "object"
+                                              ? detail.order_id._id
+                                              : detail.order_id;
+                                          return detailOrderId === order._id;
+                                        })
+                                        .map((detail) => (
+                                          <tr key={detail._id} className="orders-detail-item-row">
+                                            <td>{detail.variant_id?.pro_id?.pro_name || "Unnamed Product"}</td>
+                                            <td>{detail.variant_id?.color_id?.color_name || "N/A"}</td>
+                                            <td>{detail.variant_id?.size_id?.size_name || "N/A"}</td>
+                                            <td style={{ textAlign: "center" }}>{detail.Quantity || 0}</td>
+                                            <td style={{ textAlign: "center" }}>{formatPrice(detail.UnitPrice)}</td>
+                                            <td style={{ textAlign: "center" }}>{formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}</td>
+                                            <td>{detail.feedback_details || "None"}</td>
+                                          </tr>
+                                        ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                {/* Thông tin order phía dưới bảng sản phẩm, mỗi dòng một thông tin */}
+                                <table style={{ marginTop: 24, width: '100%' }}>
                                   <tbody>
-                                    {orderDetails
-                                      .filter((detail) => {
-                                        const detailOrderId =
-                                          typeof detail.order_id === "object"
-                                            ? detail.order_id._id
-                                            : detail.order_id;
-                                        return detailOrderId === order._id;
-                                      })
-                                      .map((detail) => (
-                                        <tr
-                                          key={detail._id}
-                                          className="orders-detail-item-row"
-                                        >
-                                          <td>
-                                            {detail.variant_id?.pro_id
-                                              ?.pro_name || "Unnamed Product"}
-                                          </td>
-                                          <td>
-                                            {detail.variant_id?.color_id
-                                              ?.color_name || "N/A"}
-                                          </td>
-                                          <td>
-                                            {detail.variant_id?.size_id
-                                              ?.size_name || "N/A"}
-                                          </td>
-                                          <td style={{ textAlign: "center" }}>
-                                            {detail.Quantity || 0}
-                                          </td>
-                                          <td style={{ textAlign: "center" }}>
-                                            {formatPrice(detail.UnitPrice)}
-                                          </td>
-                                          <td style={{ textAlign: "center" }}>
-                                            {formatPrice(
-                                              (detail.UnitPrice || 0) *
-                                              (detail.Quantity || 0)
-                                            )}
-                                          </td>
-                                          <td>
-                                            {detail.feedback_details || "None"}
-                                          </td>
-                                        </tr>
-                                      ))}
+                                    <tr>
+                                      <td style={{ textAlign: 'left', width: '180px' }}><strong>Order Status:</strong></td>
+                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.order_status)}</td>
+                                    </tr>
+                                    <tr>
+                                      <td style={{ textAlign: 'left', width: '180px' }}><strong>Payment Method:</strong></td>
+                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.payment_method)}</td>
+                                    </tr>
+                                    <tr>
+                                      <td style={{ textAlign: 'left', width: '180px' }}><strong>Payment Status:</strong></td>
+                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.pay_status)}</td>
+                                    </tr>
+                                    <tr>
+                                      <td style={{ textAlign: 'left', width: '180px' }}><strong>Refund:</strong></td>
+                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.refund_status)}{order.refund_proof ? (<span style={{ color: '#888' }}> (Proof: {order.refund_proof})</span>) : null}</td>
+                                    </tr>
                                   </tbody>
                                 </table>
-                              </div>
+                              </>
                             )}
                           </div>
                         </td>
