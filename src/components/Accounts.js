@@ -40,35 +40,28 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 const Accounts = () => {
   const { user, isAuthLoading } = useContext(AuthContext);
   const [accounts, setAccounts] = useState([]);
+  const [filteredAccounts, setFilteredAccounts] = useState([]);
   const [editingAccountId, setEditingAccountId] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    username: '',
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    image: '',
     role: 'user',
     acc_status: 'active',
-    password: '',
   });
-  const [includePassword, setIncludePassword] = useState(false);
-  const [newAccountForm, setNewAccountForm] = useState({
-    username: '',
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    image: '',
-    role: 'user',
-    acc_status: 'active',
-    password: '',
+  const [filters, setFilters] = useState({
+    searchQuery: '',
+    roleFilter: '',
+    statusFilter: '',
+    hasImage: ''
   });
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(20);
   const navigate = useNavigate();
+
+  const roleOptions = ['user', 'admin', 'manager'];
+  const statusOptions = ['active', 'suspended'];
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -95,7 +88,8 @@ const Accounts = () => {
       const response = await fetchWithRetry(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setAccounts(user.role === 'admin' ? (Array.isArray(response) ? response : []) : [response]);
+      const fetchedAccounts = user.role === 'admin' ? (Array.isArray(response) ? response : []) : [response];
+      setAccounts(fetchedAccounts);
     } catch (err) {
       setError(err.message || 'Failed to load accounts');
       console.error('Fetch accounts error:', err);
@@ -104,74 +98,74 @@ const Accounts = () => {
     }
   }, [user]);
 
-  // Create account
-  const createAccount = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    setToast(null);
+  // Apply filters
+  const applyFilters = useCallback((accountsList, filterSettings) => {
+    return accountsList.filter(account => {
+      // Search query filter
+      if (filterSettings.searchQuery) {
+        const query = filterSettings.searchQuery.toLowerCase();
+        const username = account.username?.toLowerCase() || '';
+        const name = account.name?.toLowerCase() || '';
+        const email = account.email?.toLowerCase() || '';
+        const phone = account.phone?.toLowerCase() || '';
+        const accountId = account._id?.toLowerCase() || '';
+        
+        if (!username.includes(query) && 
+            !name.includes(query) && 
+            !email.includes(query) && 
+            !phone.includes(query) && 
+            !accountId.includes(query)) {
+          return false;
+        }
+      }
 
-    const { username, name, email, phone, address, password, image, role, acc_status } = newAccountForm;
-    if (!username || !name || !email || !phone || !address || !password) {
-      setError('All required fields must be filled');
-      setLoading(false);
-      return;
-    }
+      // Role filter
+      if (filterSettings.roleFilter && account.role !== filterSettings.roleFilter) {
+        return false;
+      }
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await apiClient.post('/accounts', {
-        username, name, email, phone, address, password,
-        image: image || 'http://localhost:4000/default-pfp.jpg',
-        role, acc_status,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAccounts(prev => [...prev, response.data.account]);
-      setToast({ type: 'success', message: 'Account created successfully' });
-      setNewAccountForm({
-        username: '', name: '', email: '', phone: '', address: '',
-        image: '', role: 'user', acc_status: 'active', password: '',
-      });
-      setShowAddForm(false);
-      setIncludePassword(false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create account');
-      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to create account' });
-      console.error('Create account error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [newAccountForm]);
+      // Status filter
+      if (filterSettings.statusFilter && account.acc_status !== filterSettings.statusFilter) {
+        return false;
+      }
+
+      // Has custom image filter
+      const defaultImage = 'http://localhost:4000/default-pfp.jpg';
+      if (filterSettings.hasImage === 'true' && (account.image === defaultImage || !account.image)) {
+        return false;
+      }
+      if (filterSettings.hasImage === 'false' && account.image !== defaultImage) {
+        return false;
+      }
+
+      return true;
+    });
+  }, []);
+
+  // Update filtered accounts when accounts or filters change
+  useEffect(() => {
+    setFilteredAccounts(applyFilters(accounts, filters));
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [accounts, filters, applyFilters]);
 
   // Update account
   const updateAccount = useCallback(async (accountId) => {
-    setLoading(true);
+    if (!accountId) return;
+    
     setError('');
     setToast(null);
-
-    const { username, name, email, phone, address, image, role, acc_status, password } = editFormData;
-    if (!username || !name || !email || !phone || !address) {
-      setError('All required fields must be filled');
-      setLoading(false);
-      return;
-    }
-    if (includePassword && !password) {
-      setError('Password is required if included');
-      setLoading(false);
-      return;
-    }
 
     try {
       const token = localStorage.getItem('token');
       const updateData = {
-        username, name, email, phone, address, image,
-        role: user.role === 'admin' ? role : undefined,
-        acc_status: user.role === 'admin' ? acc_status : undefined,
-        ...(includePassword && { password }),
+        role: user.role === 'admin' ? editFormData.role : undefined,
+        acc_status: user.role === 'admin' ? editFormData.acc_status : undefined,
       };
+      
       const response = await apiClient.put(`/accounts/${accountId}`, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       setAccounts(prev =>
         prev.map(account =>
           account._id === accountId ? response.data.account : account
@@ -180,24 +174,46 @@ const Accounts = () => {
       setToast({ type: 'success', message: 'Account updated successfully' });
       setEditingAccountId(null);
       setEditFormData({
-        username: '', name: '', email: '', phone: '', address: '',
-        image: '', role: 'user', acc_status: 'active', password: '',
+        role: 'user',
+        acc_status: 'active',
       });
-      setIncludePassword(false);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update account');
       setToast({ type: 'error', message: err.response?.data?.message || 'Failed to update account' });
       console.error('Update account error:', err);
-    } finally {
-      setLoading(false);
     }
-  }, [editFormData, includePassword, user]);
+  }, [editFormData, user]);
 
-  // Delete account
-  const deleteAccount = useCallback(async (accountId) => {
-    if (!window.confirm('Are you sure you want to delete this account?')) return;
+  // Soft delete account
+  const softDeleteAccount = useCallback(async (accountId) => {
+    if (!window.confirm('Are you sure you want to soft delete this account? This will mark all fields as deleted.')) return;
 
-    setLoading(true);
+    setError('');
+    setToast(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      await apiClient.delete(`/accounts/soft/${accountId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAccounts(prev => prev.filter(account => account._id !== accountId));
+      setToast({ type: 'success', message: 'Account soft deleted successfully' });
+      if (editingAccountId === accountId) setEditingAccountId(null);
+      if (accountId === user._id) {
+        localStorage.removeItem('token');
+        navigate('/login', { replace: true });
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to soft delete account');
+      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to soft delete account' });
+      console.error('Soft delete account error:', err);
+    }
+  }, [editingAccountId, user, navigate]);
+
+  // Hard delete account
+  const hardDeleteAccount = useCallback(async (accountId) => {
+    if (!window.confirm('Are you sure you want to permanently delete this account? This action cannot be undone.')) return;
+
     setError('');
     setToast(null);
 
@@ -207,7 +223,7 @@ const Accounts = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAccounts(prev => prev.filter(account => account._id !== accountId));
-      setToast({ type: 'success', message: 'Account deleted successfully' });
+      setToast({ type: 'success', message: 'Account permanently deleted successfully' });
       if (editingAccountId === accountId) setEditingAccountId(null);
       if (accountId === user._id) {
         localStorage.removeItem('token');
@@ -216,9 +232,7 @@ const Accounts = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete account');
       setToast({ type: 'error', message: err.response?.data?.message || 'Failed to delete account' });
-      console.error('Delete account error:', err);
-    } finally {
-      setLoading(false);
+      console.error('Hard delete account error:', err);
     }
   }, [editingAccountId, user, navigate]);
 
@@ -236,27 +250,18 @@ const Accounts = () => {
   const handleEditAccount = useCallback((account) => {
     setEditingAccountId(account._id);
     setEditFormData({
-      username: account.username,
-      name: account.name,
-      email: account.email,
-      phone: account.phone,
-      address: account.address,
-      image: account.image,
-      role: account.role,
-      acc_status: account.acc_status,
-      password: '',
+      role: account.role || 'user',
+      acc_status: account.acc_status || 'active',
     });
-    setIncludePassword(false);
   }, []);
 
   // Cancel editing
   const handleCancelEdit = useCallback(() => {
     setEditingAccountId(null);
     setEditFormData({
-      username: '', name: '', email: '', phone: '', address: '',
-      image: '', role: 'user', acc_status: 'active', password: '',
+      role: 'user',
+      acc_status: 'active',
     });
-    setIncludePassword(false);
   }, []);
 
   // Handle field change for edit form
@@ -264,36 +269,51 @@ const Accounts = () => {
     setEditFormData(prev => ({ ...prev, [field]: e.target.value }));
   }, []);
 
-  // Handle field change for new account form
-  const handleNewFieldChange = useCallback((e, field) => {
-    setNewAccountForm(prev => ({ ...prev, [field]: e.target.value }));
-  }, []);
-
   // Submit updated fields
   const handleUpdateSubmit = useCallback((accountId) => {
     updateAccount(accountId);
   }, [updateAccount]);
 
-  // Submit new account
-  const handleCreateSubmit = useCallback(() => {
-    createAccount();
-  }, [createAccount]);
+  // Handle filter change
+  const handleFilterChange = (e) => {
+    const { id, value } = e.target;
+    setFilters(prev => ({ ...prev, [id]: value }));
+  };
 
-  // Toggle add form
-  const toggleAddForm = useCallback(() => {
-    setShowAddForm(prev => !prev);
-    setNewAccountForm({
-      username: '', name: '', email: '', phone: '', address: '',
-      image: '', role: 'user', acc_status: 'active', password: '',
+  // Clear filters
+  const handleClearFilters = () => {
+    setFilters({
+      searchQuery: '',
+      roleFilter: '',
+      statusFilter: '',
+      hasImage: ''
     });
-    setIncludePassword(false);
-    setError('');
-  }, []);
+  };
 
   // Retry fetching data
   const handleRetry = useCallback(() => {
     fetchAccounts();
   }, [fetchAccounts]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAccounts.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const currentAccounts = filteredAccounts.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Handle previous/next page
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
 
   // Show loading state while auth is being verified
   if (isAuthLoading) {
@@ -311,161 +331,97 @@ const Accounts = () => {
     <div className="accounts-container">
       {/* Toast Notification */}
       {toast && (
-        <div 
-          className={`accounts-toast ${toast.type === 'success' ? 'accounts-toast-success' : 'accounts-toast-error'}`}
+        <div className={`accounts-toast ${toast.type === 'success' ? 'accounts-toast-success' : 'accounts-toast-error'}`}
           role="alert"
-          aria-live="assertive"
-        >
+          aria-live="assertive">
           {toast.message}
         </div>
       )}
 
-      <h1 className="accounts-title">Account Management</h1>
-
-      {/* Add Account Button (Admin Only) */}
-      {user?.role === 'admin' && (
-        <div className="accounts-add-button-container">
+      {/* Header */}
+      <div className="accounts-header">
+        <h1 className="accounts-title">Account Management</h1>
+        <div className="accounts-header-actions">
           <button
-            onClick={toggleAddForm}
-            className="accounts-add-button"
-            aria-label={showAddForm ? 'Cancel adding account' : 'Add new account'}
+            className="accounts-filter-toggle"
+            onClick={() => setShowFilters(prev => !prev)}
+            aria-label={showFilters ? "Hide filters" : "Show filters"}
+            aria-expanded={showFilters}
           >
-            {showAddForm ? 'Cancel' : 'Add Account'}
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
           </button>
         </div>
-      )}
+      </div>
 
-      {/* Add Account Form (Admin Only) */}
-      {user?.role === 'admin' && showAddForm && (
-        <div className="accounts-add-form">
-          <h2 className="accounts-form-title">Add New Account</h2>
-          <div className="accounts-form-group">
-            <label htmlFor="new-username">Username</label>
-            <input
-              id="new-username"
-              type="text"
-              value={newAccountForm.username}
-              onChange={(e) => handleNewFieldChange(e, 'username')}
-              className="accounts-form-input"
-              aria-label="Username"
-              required
-            />
+      {/* Filters */}
+      {showFilters && (
+        <div className="accounts-filters">
+          <h2 className="accounts-filter-title">Filters</h2>
+          <div className="accounts-filters-grid">
+            <div className="accounts-filter-group">
+              <label htmlFor="searchQuery" className="accounts-filter-label">Search</label>
+              <input
+                id="searchQuery"
+                type="text"
+                value={filters.searchQuery}
+                onChange={handleFilterChange}
+                className="accounts-filter-input"
+                placeholder="Search by username, name, email, phone..."
+                aria-label="Search accounts"
+              />
+            </div>
+            <div className="accounts-filter-group">
+              <label htmlFor="roleFilter" className="accounts-filter-label">Role</label>
+              <select
+                id="roleFilter"
+                value={filters.roleFilter}
+                onChange={handleFilterChange}
+                className="accounts-filter-select"
+                aria-label="Filter by role"
+              >
+                <option value="">All Roles</option>
+                {roleOptions.map(role => (
+                  <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="accounts-filter-group">
+              <label htmlFor="statusFilter" className="accounts-filter-label">Status</label>
+              <select
+                id="statusFilter"
+                value={filters.statusFilter}
+                onChange={handleFilterChange}
+                className="accounts-filter-select"
+                aria-label="Filter by status"
+              >
+                <option value="">All Statuses</option>
+                {statusOptions.map(status => (
+                  <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="accounts-filter-group">
+              <label htmlFor="hasImage" className="accounts-filter-label">Has Custom Image</label>
+              <select
+                id="hasImage"
+                value={filters.hasImage}
+                onChange={handleFilterChange}
+                className="accounts-filter-select"
+                aria-label="Filter by custom image"
+              >
+                <option value="">All</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
           </div>
-          <div className="accounts-form-group">
-            <label htmlFor="new-name">Name</label>
-            <input
-              id="new-name"
-              type="text"
-              value={newAccountForm.name}
-              onChange={(e) => handleNewFieldChange(e, 'name')}
-              className="accounts-form-input"
-              aria-label="Name"
-              required
-            />
-          </div>
-          <div className="accounts-form-group">
-            <label htmlFor="new-email">Email</label>
-            <input
-              id="new-email"
-              type="email"
-              value={newAccountForm.email}
-              onChange={(e) => handleNewFieldChange(e, 'email')}
-              className="accounts-form-input"
-              aria-label="Email"
-              required
-            />
-          </div>
-          <div className="accounts-form-group">
-            <label htmlFor="new-phone">Phone</label>
-            <input
-              id="new-phone"
-              type="tel"
-              value={newAccountForm.phone}
-              onChange={(e) => handleNewFieldChange(e, 'phone')}
-              className="accounts-form-input"
-              aria-label="Phone"
-              required
-            />
-          </div>
-          <div className="accounts-form-group">
-            <label htmlFor="new-address">Address</label>
-            <input
-              id="new-address"
-              type="text"
-              value={newAccountForm.address}
-              onChange={(e) => handleNewFieldChange(e, 'address')}
-              className="accounts-form-input"
-              aria-label="Address"
-              required
-            />
-          </div>
-          <div className="accounts-form-group">
-            <label htmlFor="new-password">Password</label>
-            <input
-              id="new-password"
-              type="password"
-              value={newAccountForm.password}
-              onChange={(e) => handleNewFieldChange(e, 'password')}
-              className="accounts-form-input"
-              aria-label="Password"
-              required
-            />
-          </div>
-          <div className="accounts-form-group">
-            <label htmlFor="new-image">Image URL</label>
-            <input
-              id="new-image"
-              type="text"
-              value={newAccountForm.image}
-              onChange={(e) => handleNewFieldChange(e, 'image')}
-              className="accounts-form-input"
-              aria-label="Image URL"
-            />
-          </div>
-          <div className="accounts-form-group">
-            <label htmlFor="new-role">Role</label>
-            <select
-              id="new-role"
-              value={newAccountForm.role}
-              onChange={(e) => handleNewFieldChange(e, 'role')}
-              className="accounts-form-select"
-              aria-label="Role"
-            >
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-            </select>
-          </div>
-          <div className="accounts-form-group">
-            <label htmlFor="new-acc-status">Status</label>
-            <select
-              id="new-acc-status"
-              value={newAccountForm.acc_status}
-              onChange={(e) => handleNewFieldChange(e, 'acc_status')}
-              className="accounts-form-select"
-              aria-label="Status"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
-          <div className="accounts-form-actions">
+          <div className="accounts-filter-actions">
             <button
-              onClick={handleCreateSubmit}
-              className="accounts-create-button"
-              aria-label="Create account"
-              disabled={loading}
+              onClick={handleClearFilters}
+              className="accounts-clear-filters"
+              aria-label="Clear all filters"
             >
-              Create
-            </button>
-            <button
-              onClick={toggleAddForm}
-              className="accounts-cancel-button"
-              aria-label="Cancel creating account"
-              disabled={loading}
-            >
-              Cancel
+              Clear Filters
             </button>
           </div>
         </div>
@@ -476,13 +432,7 @@ const Accounts = () => {
         <div className="accounts-error" role="alert" aria-live="assertive">
           <span className="accounts-error-icon">⚠</span>
           <span>{error}</span>
-          <button 
-            className="accounts-retry-button" 
-            onClick={handleRetry}
-            aria-label="Retry loading accounts"
-          >
-            Retry
-          </button>
+          <button className="accounts-retry-button" onClick={handleRetry} aria-label="Retry loading accounts">Retry</button>
         </div>
       )}
 
@@ -495,16 +445,10 @@ const Accounts = () => {
       )}
 
       {/* Accounts Table */}
-      {!loading && accounts.length === 0 && !error ? (
+      {!loading && filteredAccounts.length === 0 && !error ? (
         <div className="accounts-empty" role="status">
           <p>No accounts found.</p>
-          <button 
-            className="accounts-continue-shopping-button"
-            onClick={() => navigate('/')}
-            aria-label="Continue shopping"
-          >
-            Continue Shopping
-          </button>
+          <button className="accounts-continue-shopping-button" onClick={() => navigate('/')} aria-label="Continue shopping">Continue Shopping</button>
         </div>
       ) : (
         <div className="accounts-table-container">
@@ -515,59 +459,21 @@ const Accounts = () => {
                 <th>Username</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Phone</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Action</th>
-                <th>Image</th>
               </tr>
             </thead>
             <tbody>
-              {accounts.map((account, index) => (
+              {currentAccounts.map((account, index) => (
                 <tr key={account._id} className="accounts-table-row">
-                  <td>{index + 1}</td>
-                  <td>
-                    {editingAccountId === account._id ? (
-                      <input
-                        type="text"
-                        value={editFormData.username}
-                        onChange={(e) => handleEditFieldChange(e, 'username')}
-                        className="accounts-form-input"
-                        aria-label="Username"
-                        required
-                      />
-                    ) : (
-                      account.username || 'N/A'
-                    )}
-                  </td>
-                  <td>
-                    {editingAccountId === account._id ? (
-                      <input
-                        type="text"
-                        value={editFormData.name}
-                        onChange={(e) => handleEditFieldChange(e, 'name')}
-                        className="accounts-form-input"
-                        aria-label="Name"
-                        required
-                      />
-                    ) : (
-                      account.name || 'N/A'
-                    )}
-                  </td>
-                  <td>
-                    {editingAccountId === account._id ? (
-                      <input
-                        type="email"
-                        value={editFormData.email}
-                        onChange={(e) => handleEditFieldChange(e, 'email')}
-                        className="accounts-form-input"
-                        aria-label="Email"
-                        required
-                      />
-                    ) : (
-                      account.email || 'N/A'
-                    )}
-                  </td>
-                  <td>
+                  <td data-label="#">{startIndex + index + 1}</td>
+                  <td data-label="Username">{account.username || 'N/A'}</td>
+                  <td data-label="Name">{account.name || 'N/A'}</td>
+                  <td data-label="Email">{account.email || 'N/A'}</td>
+                  <td data-label="Phone">{account.phone || 'N/A'}</td>
+                  <td data-label="Role">
                     {editingAccountId === account._id && user.role === 'admin' ? (
                       <select
                         value={editFormData.role}
@@ -583,7 +489,7 @@ const Accounts = () => {
                       account.role || 'N/A'
                     )}
                   </td>
-                  <td>
+                  <td data-label="Status">
                     {editingAccountId === account._id && user.role === 'admin' ? (
                       <select
                         value={editFormData.acc_status}
@@ -592,107 +498,98 @@ const Accounts = () => {
                         aria-label="Status"
                       >
                         <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
                         <option value="suspended">Suspended</option>
                       </select>
                     ) : (
                       account.acc_status || 'N/A'
                     )}
                   </td>
-                  <td>
-                    {editingAccountId === account._id ? (
-                      <div className="accounts-action-buttons">
-                        <button
-                          onClick={() => handleUpdateSubmit(account._id)}
-                          className="accounts-update-button"
-                          aria-label={`Update account ${account._id}`}
-                          disabled={loading || !editFormData.username || !editFormData.name || 
-                                    !editFormData.email || !editFormData.phone || !editFormData.address ||
-                                    (includePassword && !editFormData.password)}
-                        >
-                          Update
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="accounts-cancel-button"
-                          aria-label={`Cancel editing account ${account._id}`}
-                          disabled={loading}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="accounts-action-buttons">
-                        {(user.role === 'admin' || user._id === account._id) && (
+                  <td data-label="Action">
+                    {account.is_deleted ? null : (
+                      editingAccountId === account._id ? (
+                        <div className="accounts-action-buttons">
                           <button
-                            onClick={() => handleEditAccount(account)}
-                            className="accounts-edit-button"
-                            aria-label={`Edit account ${account._id}`}
+                            onClick={() => handleUpdateSubmit(account._id)}
+                            className="accounts-update-button"
+                            aria-label={`Update account ${account._id}`}
                           >
                             Update
                           </button>
-                        )}
-                        {(user.role === 'admin' || user._id === account._id) && (
                           <button
-                            onClick={() => deleteAccount(account._id)}
-                            className="accounts-delete-button"
-                            aria-label={`Delete account ${account._id}`}
+                            onClick={handleCancelEdit}
+                            className="accounts-cancel-button"
+                            aria-label={`Cancel editing account ${account._id}`}
                           >
-                            Delete
+                            Cancel
                           </button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td>
-                    {editingAccountId === account._id ? (
-                      <div>
-                        <input
-                          type="text"
-                          value={editFormData.image}
-                          onChange={(e) => handleEditFieldChange(e, 'image')}
-                          className="accounts-form-input"
-                          aria-label="Image URL"
-                        />
-                        <div className="accounts-form-checkbox">
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={includePassword}
-                              onChange={() => setIncludePassword(prev => !prev)}
-                              aria-label="Include password"
-                            />
-                            Include Password
-                          </label>
-                          {includePassword && (
-                            <input
-                              type="password"
-                              value={editFormData.password}
-                              onChange={(e) => handleEditFieldChange(e, 'password')}
-                              className="accounts-form-input"
-                              aria-label="Password"
-                            />
+                        </div>
+                      ) : (
+                        <div className="accounts-action-buttons">
+                          {(user.role === 'admin' || user._id === account._id) && (
+                            <button
+                              onClick={() => handleEditAccount(account)}
+                              className="accounts-edit-button"
+                              aria-label={`Edit account ${account._id}`}
+                            >
+                              Update
+                            </button>
+                          )}
+                          {(user.role === 'admin' || user._id === account._id) && (
+                            <button
+                              onClick={() => softDeleteAccount(account._id)}
+                              className="accounts-delete-button"
+                              aria-label={`Delete account ${account._id}`}
+                            >
+                              Delete
+                            </button>
                           )}
                         </div>
-                      </div>
-                    ) : account.image ? (
-                      <img
-                        src={account.image}
-                        alt={account.username}
-                        className="accounts-image"
-                        onError={(e) => {
-                          e.target.src = 'http://localhost:4000/default-pfp.jpg';
-                          e.target.alt = 'Image not available';
-                        }}
-                      />
-                    ) : (
-                      'N/A'
+                      )
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {filteredAccounts.length > 0 && (
+        <div className="accounts-pagination">
+          <div className="accounts-pagination-info">
+            Showing {startIndex + 1} to {Math.min(endIndex, filteredAccounts.length)} of {filteredAccounts.length} accounts
+          </div>
+          <div className="accounts-pagination-controls">
+            <button
+              className="accounts-pagination-button"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              Previous
+            </button>
+            <div className="accounts-pagination-pages">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  className={`accounts-pagination-page ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => handlePageChange(page)}
+                  aria-label={`Page ${page}`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              className="accounts-pagination-button"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

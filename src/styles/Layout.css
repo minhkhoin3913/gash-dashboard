@@ -17,7 +17,7 @@
   --transition-fast: 0.2s ease;
   --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-medium: 0 2px 8px rgba(0, 0, 0, 0.15);
-  --sidebar-width: 250px;
+  --sidebar-width: 200px;
 }
 
 /* Layout container */
@@ -25,7 +25,6 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  
   background-color: var(--amazon-bg);
 }
 
@@ -87,12 +86,12 @@
 .navbar {
   background-color: var(--amazon-dark);
   color: var(--amazon-bg);
-  padding: 12px 0;
   position: fixed;
   width: 100%;
   top: 0;
   z-index: 1000;
   box-shadow: var(--shadow-light);
+  height: var(--navbar-height);
 }
 
 .navbar-container {
@@ -103,6 +102,7 @@
   align-items: center;
   padding: 0 16px;
   gap: 16px;
+  height: 100%;
 }
 
 /* Logo styling */
@@ -128,8 +128,6 @@
   border-radius: 2px;
 }
 
-
-
 /* Navigation actions */
 .nav-actions {
   display: flex;
@@ -141,7 +139,6 @@
   background: none;
   border: 1px solid transparent;
   color: var(--amazon-bg);
-  
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -217,7 +214,6 @@
   border: none;
   color: var(--amazon-text);
   text-align: left;
-  
   font-size: 0.875rem;
   cursor: pointer;
   transition: background-color var(--transition-fast), color var(--transition-fast);
@@ -256,12 +252,16 @@
   color: var(--amazon-bg);
   box-shadow: var(--shadow-medium);
   z-index: 999;
-  transform: translateX(-100%);
   transition: transform var(--transition-fast);
+  overflow-y: auto;
 }
 
 .admin-sidebar.open {
   transform: translateX(0);
+}
+
+.admin-sidebar:not(.open) {
+  transform: translateX(-100%);
 }
 
 .sidebar-header {
@@ -308,7 +308,6 @@
   color: var(--amazon-bg);
   text-decoration: none;
   font-size: 0.875rem;
-  
   transition: background-color var(--transition-fast);
 }
 
@@ -326,20 +325,39 @@
 .main-content {
   flex-grow: 1;
   margin-top: var(--navbar-height);
-  margin-left: 0;
   background-color: var(--amazon-bg);
   min-height: calc(100vh - var(--navbar-height));
   transition: margin-left var(--transition-fast);
+  width: 100%; /* Default to full width */
 }
 
 .admin-sidebar.open ~ .main-content {
   margin-left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width)); /* Adjust width when sidebar is open */
+}
+
+.admin-sidebar:not(.open) ~ .main-content {
+  margin-left: 0;
+  width: 100%;
+}
+
+/* Login page specific styling */
+.main-content.login-page {
+  margin-top: var(--navbar-height);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - var(--navbar-height));
 }
 
 /* Responsive design */
 @media (max-width: 1024px) {
   .navbar-container {
     gap: 12px;
+  }
+
+  .main-content {
+    padding: 12px;
   }
 }
 
@@ -348,23 +366,24 @@
     --navbar-height: var(--navbar-height-responsive);
   }
 
+  .navbar {
+    height: var(--navbar-height-responsive);
+  }
+
   .main-content {
     margin-top: var(--navbar-height-responsive);
-    margin-left: 0;
+    padding: 8px;
   }
 
-  .admin-sidebar.open ~ .main-content {
+  .admin-sidebar:not(.open) ~ .main-content {
     margin-left: 0;
-  }
-
-  .navbar {
-    padding: 0;
+    width: 100%;
   }
 
   .navbar-container {
     flex-direction: row;
     padding: 12px;
-    gap: 16px;
+    gap: 8px;
   }
 
   .nav-actions {
@@ -389,6 +408,11 @@
 
   .nav-button.account {
     min-width: 100px;
+  }
+
+  .main-content.login-page {
+    margin-top: var(--navbar-height-responsive);
+    height: calc(100vh - var(--navbar-height-responsive));
   }
 }
 
