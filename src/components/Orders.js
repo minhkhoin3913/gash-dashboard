@@ -45,10 +45,10 @@ apiClient.interceptors.response.use(
       status === 401
         ? "Unauthorized access - please log in"
         : status === 404
-        ? "Resource not found"
-        : status >= 500
-        ? "Server error - please try again later"
-        : "Network error - please check your connection";
+          ? "Resource not found"
+          : status >= 500
+            ? "Server error - please try again later"
+            : "Network error - please check your connection";
     return Promise.reject({ ...error, message });
   }
 );
@@ -71,6 +71,15 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 const Orders = () => {
   const { user, isAuthLoading } = useContext(AuthContext);
   const [orders, setOrders] = useState([]);
+  // So sánh dữ liệu chỉnh sửa với dữ liệu gốc
+  const isOrderDataChanged = (order) => {
+    return (
+      editFormData.order_status !== order.order_status ||
+      editFormData.pay_status !== order.pay_status ||
+      editFormData.shipping_status !== order.shipping_status ||
+      (editFormData.refund_status && editFormData.refund_status !== order.refund_status)
+    );
+  };
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [orderDetails, setOrderDetails] = useState([]);
@@ -217,12 +226,12 @@ const Orders = () => {
       });
       console.log("Orders API response:", response);
       setOrders(
-  Array.isArray(response)
-    ? response.sort(
-        (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
-      )
-    : []
-);
+        Array.isArray(response)
+          ? response.sort(
+            (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
+          )
+          : []
+      );
       // setCurrentPage(1); // Reset to first page on new fetch
     } catch (err) {
       setError(err.message || "Failed to load orders");
@@ -408,11 +417,10 @@ const Orders = () => {
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`orders-toast ${
-            toast.type === "success"
-              ? "orders-toast-success"
-              : "orders-toast-error"
-          }`}
+          className={`orders-toast ${toast.type === "success"
+            ? "orders-toast-success"
+            : "orders-toast-error"
+            }`}
           role="alert"
         >
           {toast.message}
@@ -663,37 +671,45 @@ const Orders = () => {
                         {formatPrice(order.totalPrice)}
                       </td>
                       <td
-                        className={`orders-status-${
-                          order.order_status?.toLowerCase() || "unknown"
-                        }`}
+                        className={`orders-status-${order.order_status?.toLowerCase() || "unknown"
+                          }`}
                         style={{ textAlign: "center" }}
                       >
                         {isEditEnabled ? (
-                         <select
-  value={editFormData.order_status}
-  onChange={(e) => {
-    const newStatus = e.target.value;
-    setEditFormData((prev) => ({
-      ...prev,
-      order_status: newStatus,
-      // Nếu chọn delivered thì auto chuyển pay_status = paid
-      pay_status: newStatus === "delivered" ? "paid" : prev.pay_status,
-    }));
-  }}
-  className="orders-status-select"
-  aria-label="Order status"
-  disabled={!isEditEnabled}
->
-  {orderStatusOptions.map((status) => (
-    <option
-      key={status.value}
-      value={status.value}
-      disabled={getOrderStatusOptionDisabled(order.order_status, status.value)}
-    >
-      {status.label}
-    </option>
-  ))}
-</select>
+                          <select
+                            value={editFormData.order_status}
+                            onChange={(e) => {
+                              const newStatus = e.target.value;
+                              setEditFormData((prev) => {
+                                let newPayStatus = prev.pay_status;
+                                // Nếu là COD thì delivered = paid, còn lại = unpaid
+                                if (order.payment_method === "COD") {
+                                  newPayStatus = newStatus === "delivered" ? "paid" : "unpaid";
+                                } else {
+                                  // Giữ logic cũ cho các phương thức khác
+                                  newPayStatus = newStatus === "delivered" ? "paid" : prev.pay_status;
+                                }
+                                return {
+                                  ...prev,
+                                  order_status: newStatus,
+                                  pay_status: newPayStatus,
+                                };
+                              });
+                            }}
+                            className="orders-status-select"
+                            aria-label="Order status"
+                            disabled={!isEditEnabled}
+                          >
+                            {orderStatusOptions.map((status) => (
+                              <option
+                                key={status.value}
+                                value={status.value}
+                                disabled={getOrderStatusOptionDisabled(order.order_status, status.value)}
+                              >
+                                {status.label}
+                              </option>
+                            ))}
+                          </select>
 
                         ) : (
                           order.order_status ? displayStatus(order.order_status) : "N/A"
@@ -720,10 +736,10 @@ const Orders = () => {
                               <option
                                 key={status.value}
                                 value={status.value}
-                                  disabled={
-                                    (order.payment_method === "VNPAY" && status.value === "unpaid") ||
-                                    (order.payment_method === "COD" && status.value === "paid")
-                                  }
+                                disabled={
+                                  (order.payment_method === "VNPAY" && status.value === "unpaid") ||
+                                  (order.payment_method === "COD" && status.value === "paid")
+                                }
                               >
                                 {status.label}
                               </option>
@@ -818,9 +834,18 @@ const Orders = () => {
                         {editingOrderId === order._id ? (
                           <div className="orders-action-buttons">
                             <button
-                              onClick={() =>
-                                updateOrder(order._id, editFormData)
-                              }
+                              onClick={() => {
+                                if (!isOrderDataChanged(order)) {
+                                  setEditingOrderId(null);
+                                  setEditFormData({
+                                    order_status: "",
+                                    pay_status: "",
+                                    shipping_status: "",
+                                  });
+                                  return;
+                                }
+                                updateOrder(order._id, editFormData);
+                              }}
                               className="orders-update-button"
                               aria-label={`Update order ${order._id}`}
                               disabled={shouldDisableUpdate(
@@ -952,7 +977,7 @@ const Orders = () => {
                                           <td style={{ textAlign: "center" }}>
                                             {formatPrice(
                                               (detail.UnitPrice || 0) *
-                                                (detail.Quantity || 0)
+                                              (detail.Quantity || 0)
                                             )}
                                           </td>
                                           <td>
@@ -998,9 +1023,8 @@ const Orders = () => {
                 (page) => (
                   <button
                     key={page}
-                    className={`orders-pagination-page ${
-                      currentPage === page ? "active" : ""
-                    }`}
+                    className={`orders-pagination-page ${currentPage === page ? "active" : ""
+                      }`}
                     onClick={() => handlePageChange(page)}
                     aria-label={`Page ${page}`}
                   >
