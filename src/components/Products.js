@@ -55,10 +55,11 @@ const Products = () => {
     pro_name: '',
     cat_id: '',
     pro_price: '',
-    imageURL: '',
     description: '',
     status_product: 'active',
   });
+  const [newProductImageFile, setNewProductImageFile] = useState(null);
+  const [newProductImagePreview, setNewProductImagePreview] = useState('');
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -80,6 +81,8 @@ const Products = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
+  const [editImageFile, setEditImageFile] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState('');
 
   // Status options
   const statusOptions = ['active', 'discontinued', 'out_of_stock'];
@@ -250,6 +253,63 @@ const Products = () => {
     setShowFilters(prev => !prev);
   }, []);
 
+  // Upload helper (single image)
+  const uploadSingleImage = useCallback(async (file) => {
+    const token = localStorage.getItem('token');
+    if (!file) return '';
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await apiClient.post('/upload', formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data?.url || '';
+  }, []);
+
+  // Handle file selection (Add form)
+  const handleNewImageFileChange = useCallback((e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      // Validate file type - must be an image
+      if (!file.type.startsWith('image/')) {
+        setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
+        setNewProductImageFile(null);
+        setNewProductImagePreview('');
+        // Reset the file input
+        e.target.value = '';
+        return;
+      }
+      setNewProductImageFile(file);
+      setNewProductImagePreview(URL.createObjectURL(file));
+    } else {
+      setNewProductImageFile(null);
+      setNewProductImagePreview('');
+    }
+  }, []);
+
+  // Handle file selection (Edit form)
+  const handleEditImageFileChange = useCallback((e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      // Validate file type - must be an image
+      if (!file.type.startsWith('image/')) {
+        setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
+        setEditImageFile(null);
+        setEditImagePreview('');
+        // Reset the file input
+        e.target.value = '';
+        return;
+      }
+      setEditImageFile(file);
+      setEditImagePreview(URL.createObjectURL(file));
+    } else {
+      setEditImageFile(null);
+      setEditImagePreview('');
+    }
+  }, []);
+
   // Create product
   const createProduct = useCallback(async () => {
     setLoading(true);
@@ -267,12 +327,29 @@ const Products = () => {
       setLoading(false);
       return;
     }
+    if (!newProductImageFile) {
+      setError('Please upload a product image');
+      setLoading(false);
+      return;
+    }
+    // Additional validation to ensure file is an image
+    if (!newProductImageFile.type.startsWith('image/')) {
+      setError('Product update failed, information remains unchanged');
+      setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
+      setLoading(false);
+      return;
+    }
 
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
+      const imageURLToUse = await uploadSingleImage(newProductImageFile);
+      if (!imageURLToUse) {
+        throw new Error('Image upload failed');
+      }
       const response = await apiClient.post('/products', {
         ...newProductForm,
+        imageURL: imageURLToUse,
         pro_price: parseFloat(newProductForm.pro_price),
       }, {
         headers: { Authorization: `Bearer ${token}` },
@@ -289,10 +366,11 @@ const Products = () => {
         pro_name: '',
         cat_id: '',
         pro_price: '',
-        imageURL: '',
         description: '',
         status_product: 'active',
       });
+      setNewProductImageFile(null);
+      setNewProductImagePreview('');
       setShowAddForm(false);
     } catch (err) {
       setError(err.message || 'Failed to create product');
@@ -320,12 +398,27 @@ const Products = () => {
       setLoading(false);
       return;
     }
+    // Additional validation to ensure file is an image if editing image
+    if (editImageFile && !editImageFile.type.startsWith('image/')) {
+      setError('Product update failed, information remains unchanged');
+      setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
+      setLoading(false);
+      return;
+    }
 
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
+      let imageURLToUse = editFormData.imageURL;
+      if (editImageFile) {
+        imageURLToUse = await uploadSingleImage(editImageFile);
+        if (!imageURLToUse) {
+          throw new Error('Image upload failed');
+        }
+      }
       const response = await apiClient.put(`/products/${productId}`, {
         ...editFormData,
+        imageURL: imageURLToUse,
         pro_price: parseFloat(editFormData.pro_price),
       }, {
         headers: { Authorization: `Bearer ${token}` },
@@ -334,6 +427,7 @@ const Products = () => {
       // Normalize the response to match the populated format
       const updatedProduct = {
         ...response.data.product,
+        imageURL: imageURLToUse, // Ensure the new image URL is used
         cat_id: categories.find(cat => cat._id === editFormData.cat_id) || { _id: editFormData.cat_id, cat_name: 'N/A' },
       };
       setProducts(prev =>
@@ -351,6 +445,8 @@ const Products = () => {
         description: '',
         status_product: '',
       });
+      setEditImageFile(null);
+      setEditImagePreview('');
     } catch (err) {
       setError(err.message || 'Failed to update product');
       setToast({ type: 'error', message: err.message || 'Failed to update product' });
@@ -358,7 +454,7 @@ const Products = () => {
     } finally {
       setLoading(false);
     }
-  }, [editFormData, categories]);
+  }, [editFormData, categories, editImageFile, uploadSingleImage]);
 
   // Delete product
   const deleteProduct = useCallback(async (productId) => {
@@ -418,6 +514,8 @@ const Products = () => {
       description: product.description || '',
       status_product: product.status_product || 'active',
     });
+    setEditImageFile(null);
+    setEditImagePreview('');
   }, []);
 
   // Cancel editing
@@ -431,6 +529,8 @@ const Products = () => {
       description: '',
       status_product: '',
     });
+    setEditImageFile(null);
+    setEditImagePreview('');
   }, []);
 
   // Handle field change for edit form
@@ -699,18 +799,28 @@ const Products = () => {
                 required
               />
             </div>
-            <div className="products-form-group">
-              <label htmlFor="new-image-url">Image URL</label>
-              <input
-                id="new-image-url"
-                type="text"
-                value={newProductForm.imageURL}
-                onChange={(e) => handleNewProductFieldChange(e, 'imageURL')}
-                className="products-form-input"
-                aria-label="Product image URL"
-              />
+            <div className="products-form-group products-file-group">
+              <label htmlFor="new-image-file">Upload Image</label>
+              <div className="products-file-input">
+                <input
+                  id="new-image-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleNewImageFileChange}
+                  aria-label="Upload product image file"
+                />
+              </div>
+              {newProductImagePreview && (
+                <div className="products-image-preview">
+                  <img
+                    src={newProductImagePreview}
+                    alt="Preview"
+                    className="products-image"
+                  />
+                </div>
+              )}
             </div>
-            <div className="products-form-group">
+            <div className="products-form-group products-status-group">
               <label htmlFor="new-status-product">Status</label>
               <select
                 id="new-status-product"
@@ -856,13 +966,31 @@ const Products = () => {
                     </td>
                     <td>
                       {editingProductId === product._id ? (
-                        <input
-                          type="text"
-                          value={editFormData.imageURL}
-                          onChange={(e) => handleEditFieldChange(e, 'imageURL')}
-                          className="products-form-input"
-                          aria-label="Product image URL"
-                        />
+                        <div className="products-edit-image">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleEditImageFileChange}
+                            aria-label="Upload new product image"
+                          />
+                          {editImagePreview ? (
+                            <div className="products-image-preview">
+                              <img
+                                src={editImagePreview}
+                                alt="New image preview"
+                                className="products-image"
+                              />
+                            </div>
+                          ) : product.imageURL ? (
+                            <div className="products-image-preview">
+                              <img
+                                src={product.imageURL}
+                                alt="Current image"
+                                className="products-image"
+                              />
+                            </div>
+                          ) : null}
+                        </div>
                       ) : product.imageURL ? (
                         <img
                           src={product.imageURL}
