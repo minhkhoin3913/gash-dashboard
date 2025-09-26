@@ -797,6 +797,7 @@ const Products = () => {
                 <th>Image</th>
                 <th>Description</th>
                 <th>Status</th>
+                <th>Quantity</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -906,6 +907,9 @@ const Products = () => {
                       )}
                     </td>
                     <td>
+                      {typeof product.quantity === 'number' ? product.quantity : 0}
+                    </td>
+                    <td>
                       {editingProductId === product._id ? (
                         <div className="products-action-buttons">
                           <button
@@ -954,7 +958,7 @@ const Products = () => {
                   </tr>
                   {selectedProductId === product._id && (
                     <tr className="products-details-row">
-                      <td colSpan="8">
+                      <td colSpan="9">
                         <div className="products-details-section">
                           <h2 className="products-details-title">Product Details</h2>
                           <p className="products-detail-description">
