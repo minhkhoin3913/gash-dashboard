@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 import Products from "./components/Products";
+import ProductVariants from "./components/ProductVariants";
 import Login from "./components/Login";
 import Profile from "./components/Profile";
 import Carts from "./components/Carts";
@@ -18,16 +19,20 @@ import Categories from "./components/Categories";
 import Feedbacks from "./components/Feedbacks";
 import ImportBills from "./components/ImportBills";
 import Statistics from "./components/Statistics";
-import UploadImage from "./components/UploadImage";   // ✅ file mới
 
 import Layout from "./components/Layout";
 
-// ProtectedRoute
+// ProtectedRoute component to restrict access to admin/manager roles
 const ProtectedRoute = ({ children }) => {
   const { user, isAuthLoading } = React.useContext(AuthContext);
   const location = useLocation();
 
-  if (isAuthLoading) return null;
+  if (isAuthLoading) {
+    // Optionally, show a spinner or null while loading
+    return null;
+  }
+
+  // Check if user is authenticated and has admin or manager role
   if (!user || !["admin", "manager"].includes(user.role)) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
@@ -42,7 +47,6 @@ const App = () => {
         <Layout>
           <Routes>
             <Route path="/login" element={<Login />} />
-
             <Route
               path="/"
               element={
@@ -51,7 +55,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/products"
               element={
@@ -60,7 +63,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/feedbacks"
               element={
@@ -69,7 +71,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/statistics"
               element={
@@ -78,7 +79,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/imports"
               element={
@@ -87,7 +87,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/accounts"
               element={
@@ -96,7 +95,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/specifications"
               element={
@@ -105,17 +103,14 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
-            {/* ✅ Route Upload Image */}
             <Route
-              path="/upload-image"
+              path="/variants"
               element={
                 <ProtectedRoute>
-                  <UploadImage />
+                  <ProductVariants />
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/profile"
               element={
@@ -124,7 +119,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/carts"
               element={
@@ -133,7 +127,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/categories"
               element={
@@ -142,7 +135,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/orders"
               element={
