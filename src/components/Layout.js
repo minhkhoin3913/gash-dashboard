@@ -123,7 +123,7 @@ const Layout = ({ children }) => {
       { label: 'Feedback', to: '/feedbacks' },
       { label: 'Product', to: '/products' },
       { label: 'Product Specification', to: '/specifications' },
-      { label: 'Product Variant', to: '/variants' },
+      { label: 'Upload Image', to: '/upload-image' }, // ✅ đổi từ Product Variant
       { label: 'Import Bills', to: '/imports' },
       { label: 'Statistics', to: '/statistics' },
     ],
@@ -200,16 +200,14 @@ const Layout = ({ children }) => {
                 type="button"
               >
                 {user ? (
-                  <>
-                    {`${userDisplayName}`}
-                  </>
+                  <>{`${userDisplayName}`}</>
                 ) : (
                   'Hello, Sign In'
                 )}
               </button>
               {user && isDropdownOpen && (
                 <div className="dropdown" role="menu">
-                  {dropdownItems.map((item, index) => (
+                  {dropdownItems.map((item, index) =>
                     item.to ? (
                       <Link
                         key={index}
@@ -234,7 +232,7 @@ const Layout = ({ children }) => {
                         {item.label}
                       </button>
                     )
-                  ))}
+                  )}
                 </div>
               )}
             </div>
