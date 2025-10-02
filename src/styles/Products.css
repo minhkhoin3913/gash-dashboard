@@ -339,6 +339,11 @@
   width: 100%;
 }
 
+/* Keep file input to a single column so Status stays on same row */
+.products-file-group {
+  grid-column: auto;
+}
+
 .products-description-textarea {
   width: 100%;
   min-height: 120px;
@@ -362,6 +367,14 @@
   color: var(--amazon-text);
   background-color: var(--amazon-bg);
   transition: border-color var(--transition-fast);
+}
+
+/* Ensure file input text remains visible and status select doesn't overflow */
+.products-file-input input[type="file"] { max-width: 100%; width: 100%; }
+
+/* Narrower status select in add form so it doesn't overlap the file input text */
+.products-status-group .products-form-select {
+  max-width: 160px;
 }
 
 .products-form-textarea {
@@ -562,7 +575,7 @@
 .products-update-button,
 .products-cancel-button,
 .products-delete-button {
-  padding: 6px 12px;
+  margin-left: 20px;
   background-color: var(--amazon-bg);
   border: 1px solid var(--amazon-border);
   border-radius: 3px;
@@ -571,6 +584,12 @@
   color: var(--amazon-link);
   transition: background-color var(--transition-fast), color var(--transition-fast);
   margin-right: 8px;
+  min-width: 100px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .products-toggle-details:hover,
@@ -609,6 +628,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .products-field-select {
@@ -792,6 +812,16 @@
     gap: 4px;
   }
 
+  .products-toggle-details,
+  .products-edit-button,
+  .products-update-button,
+  .products-cancel-button,
+  .products-delete-button {
+    min-width: 90px;
+    height: 32px;
+    padding: 6px 12px;
+  }
+
   .products-form-input,
   .products-form-textarea,
   .products-form-select,
@@ -812,6 +842,11 @@
   .products-form-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  /* Reset span on small screens */
+  .products-file-group {
+    grid-column: auto;
   }
 
   .products-pagination {
