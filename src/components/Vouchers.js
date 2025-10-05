@@ -17,6 +17,9 @@ export default function Vouchers() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
 
@@ -164,38 +167,51 @@ export default function Vouchers() {
     }
   };
 
-  return (
-    <div className="vouchers-container">
-      <div className="vouchers-header">
-        <h1>🎟️ Quản lý Voucher</h1>
-        <button
-          className="create-btn"
-          onClick={() => {
-            setShowForm(!showForm);
-            setEditMode(false);
-            setEditId(null);
-            setFormData({
-              code: "",
-              discountType: "percentage",
-              discountValue: "",
-              minOrderValue: 0,
-              maxDiscount: "",
-              startDate: "",
-              endDate: "",
-              usageLimit: 1,
-            });
-          }}
-        >
-          {showForm ? "⬅ Quay lại" : "➕ Create Voucher"}
-        </button>
-      </div>
+  // Sort voucher theo ngày bắt đầu (mới nhất lên đầu)
+  const sortedVouchers = [...vouchers].sort(
+    (a, b) => new Date(b.startDate) - new Date(a.startDate)
+  );
 
+  // Lọc voucher theo trạng thái, loại và mã tìm kiếm
+  const filteredVouchers = sortedVouchers.filter((v) => {
+    const matchesStatus =
+      statusFilter === "all" || getVoucherStatus(v) === statusFilter;
+    const matchesType =
+      typeFilter === "all" || v.discountType === typeFilter;
+    const matchesSearch =
+      searchTerm === "" || v.code.includes(searchTerm);
+
+    return matchesStatus && matchesType && matchesSearch;
+  });
+
+  return (
+    <div className="vouchers-header">
       {showForm ? (
         <div className="voucher-create-form">
-          <h2>{editMode ? "✏️ Sửa Voucher" : "Tạo Voucher Mới"}</h2>
+          <h2>{editMode ? "✏️ Edit Voucher" : "Create New Voucher"}</h2>
+          <button
+            className="centered-back-btn"
+            onClick={() => {
+              setShowForm(false);
+              setEditMode(false);
+              setEditId(null);
+              setFormData({
+                code: "",
+                discountType: "percentage",
+                discountValue: "",
+                minOrderValue: 0,
+                maxDiscount: "",
+                startDate: "",
+                endDate: "",
+                usageLimit: 1,
+              });
+            }}
+          >
+            ⬅ Back
+          </button>
           <form onSubmit={handleSubmit}>
             <label>
-              Mã Voucher:
+              Voucher Code:
               <input
                 name="code"
                 value={formData.code}
@@ -206,20 +222,20 @@ export default function Vouchers() {
             </label>
 
             <label>
-              Loại Giảm:
+              Discount Type:
               <select
                 name="discountType"
                 value={formData.discountType}
                 onChange={handleChange}
                 disabled={formData.isDeleted}
               >
-                <option value="percentage">Phần trăm (%)</option>
-                <option value="fixed">Giá cố định</option>
+                <option value="percentage">(%)</option>
+                <option value="fixed">Fixed Price</option>
               </select>
             </label>
 
             <label>
-              {formData.discountType === "percentage" ? "Giảm (%)" : "Giảm (₫)"}:
+              {formData.discountType === "percentage" ? "Discount (%):" : "Giảm (₫)"}:
               <input
                 type="number"
                 name="discountValue"
@@ -233,7 +249,7 @@ export default function Vouchers() {
             </label>
 
             <label>
-              Đơn tối thiểu:
+              Minimum Order:
               <input
                 type="number"
                 name="minOrderValue"
@@ -245,7 +261,7 @@ export default function Vouchers() {
 
             {formData.discountType === "percentage" && (
               <label>
-                Giảm tối đa (₫):
+               Maximum Discount (VND):
                 <input
                   type="number"
                   name="maxDiscount"
@@ -257,7 +273,7 @@ export default function Vouchers() {
             )}
 
             <label>
-              Ngày bắt đầu:
+              Start Date:
               <input
                 type="date"
                 name="startDate"
@@ -269,7 +285,7 @@ export default function Vouchers() {
             </label>
 
             <label>
-              Ngày kết thúc:
+              End Date:
               <input
                 type="date"
                 name="endDate"
@@ -281,7 +297,7 @@ export default function Vouchers() {
             </label>
 
             <label>
-              Giới hạn sử dụng:
+              Validity Limit:
               <input
                 type="number"
                 name="usageLimit"
@@ -293,88 +309,128 @@ export default function Vouchers() {
             </label>
 
             <button type="submit" disabled={loading || formData.isDeleted}>
-              {loading ? "Đang xử lý..." : editMode ? "Cập nhật" : "Tạo Voucher"}
+              {loading ? "Processing..." : editMode ? "Update" : "Create Voucher"}
             </button>
           </form>
           {message && <p className="message">{message}</p>}
         </div>
       ) : (
-        <div className="voucher-table-container">
-          <table className="voucher-table">
-            <thead>
-              <tr>
-                <th>Mã</th>
-                <th>Loại</th>
-                <th>Giá trị</th>
-                <th>Đơn tối thiểu</th>
-                <th>Giảm tối đa</th>
-                <th>Ngày bắt đầu</th>
-                <th>Ngày kết thúc</th>
-                <th>Giới hạn</th>
-                <th>Đã dùng</th>
-                <th>Trạng thái</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vouchers.length > 0 ? (
-                vouchers.map((v) => {
-                  const status = getVoucherStatus(v);
-                  return (
-                    <tr key={v.id || v._id}>
-                      <td>{v.code}</td>
-                      <td>{v.discountType}</td>
-                      <td>
-                        {v.discountType === "percentage"
-                          ? `${v.discountValue}%`
-                          : `₫${v.discountValue.toLocaleString("vi-VN")}`}
-                      </td>
-                      <td>₫{v.minOrderValue.toLocaleString("vi-VN")}</td>
-                      <td>
-                        {v.discountType === "percentage"
-                          ? v.maxDiscount
-                            ? `₫${v.maxDiscount.toLocaleString("vi-VN")}`
-                            : "-"
-                          : "-"}
-                      </td>
-                      <td>{new Date(v.startDate).toLocaleDateString("vi-VN")}</td>
-                      <td>{new Date(v.endDate).toLocaleDateString("vi-VN")}</td>
-                      <td>{v.usageLimit}</td>
-                      <td>{v.usedCount}</td>
-                      <td>
-                        <span className={`voucher-status ${getVoucherStatus(v).toLowerCase().replace(" ", "-")}`}>
-                          {getVoucherStatus(v)}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          className="edit-btn"
-                          onClick={() => handleEdit(v)}
-                          disabled={v.isDeleted}
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          className="delete-btn"
-                          onClick={() => handleDelete(v)}
-                          disabled={v.isDeleted}
-                        >
-                          {v.isDeleted ? "Disabled" : "❌ Delete"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
+        <>
+          <h1>🎟️ Voucher Management</h1>
+          <div className="vouchers-actions">
+            <input
+              type="text"
+              className="voucher-search"
+              placeholder="Search by code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
+            />
+            <select
+              className="type-filter"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="all">All Types</option>
+              <option value="percentage">Percentage (%)</option>
+              <option value="fixed">Fixed Amount</option>
+            </select>
+            <select
+              className="status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="UPCOMING">Upcoming</option>
+              <option value="USED UP">Used Up</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="DISABLED">Disabled</option>
+            </select>
+            <button
+              className="create-btn"
+              onClick={() => setShowForm(true)}
+            >
+              ➕ Create Voucher
+            </button>
+          </div>
+
+          <div className="voucher-table-container">
+            <table className="voucher-table">
+              <thead>
                 <tr>
-                  <td colSpan="11" style={{ textAlign: "center" }}>
-                    Không có voucher nào
-                  </td>
+                  <th>Code</th>
+                  <th>Type</th>
+                  <th>Discount</th>
+                  <th>Min Order</th>
+                  <th>Max Discount</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Usage Limit</th>
+                  <th>Used</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredVouchers.length > 0 ? (
+                  filteredVouchers.map((v) => {
+                    const status = getVoucherStatus(v);
+                    return (
+                      <tr key={v.id || v._id}>
+                        <td>{v.code}</td>
+                        <td>{v.discountType}</td>
+                        <td>
+                          {v.discountType === "percentage"
+                            ? `${v.discountValue}%`
+                            : `₫${v.discountValue.toLocaleString("vi-VN")}`}
+                        </td>
+                        <td>₫{v.minOrderValue.toLocaleString("vi-VN")}</td>
+                        <td>
+                          {v.discountType === "percentage"
+                            ? v.maxDiscount
+                              ? `₫${v.maxDiscount.toLocaleString("vi-VN")}`
+                              : "-"
+                            : "-"}
+                        </td>
+                        <td>{new Date(v.startDate).toLocaleDateString("vi-VN")}</td>
+                        <td>{new Date(v.endDate).toLocaleDateString("vi-VN")}</td>
+                        <td>{v.usageLimit}</td>
+                        <td>{v.usedCount}</td>
+                        <td>
+                          <span className={`voucher-status ${getVoucherStatus(v).toLowerCase().replace(" ", "-")}`}>
+                            {getVoucherStatus(v)}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className="edit-btn"
+                            onClick={() => handleEdit(v)}
+                            disabled={v.isDeleted}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            className="delete-btn"
+                            onClick={() => handleDelete(v)}
+                            disabled={v.isDeleted}
+                          >
+                            {v.isDeleted ? "Disabled" : "❌ Delete"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="11" style={{ textAlign: "center" }}>
+                      Không có voucher nào
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
