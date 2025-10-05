@@ -174,39 +174,43 @@
 }
 
 /* ============ STATUS BADGES ============ */
+/* ============ STATUS BADGES ============ */
 .voucher-status {
   font-weight: 700;
   text-transform: uppercase;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 8px;
   display: inline-block;
-  min-width: 90px;
+  min-width: 95px;
   text-align: center;
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   letter-spacing: 0.3px;
 }
 
+/* Trạng thái còn hiệu lực */
 .status-active {
-  background-color: #16a34a; /* xanh lá đậm */
+  background-color: #16a34a;
+  /* xanh lá đậm */
 }
 
-.status-deleted {
-  background-color: #ef4444; /* đỏ đậm */
+/* Trạng thái đã bị vô hiệu hóa */
+.used-up {
+  background-color: #ff8800;
 }
 
-.status-expired {
-  background-color: #9ca3af; /* xám đậm */
+.upcoming {
+  background-color: #f4e917;
 }
 
-/* ============ ANIMATIONS ============ */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.active {
+  background-color: #16a34a;
+}
+
+.expired {
+  background-color: #6b7280;
+}
+
+.disabled {
+  background-color: #dc2626;
 }
