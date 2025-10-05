@@ -134,6 +134,8 @@ const Layout = ({ children }) => {
       { label: 'Product Variant', to: '/variants' },
       { label: 'Import Bills', to: '/imports' },
       { label: 'Statistics', to: '/statistics' },
+      { label: 'Voucher', to: '/vouchers' },
+
     ],
     []
   );
