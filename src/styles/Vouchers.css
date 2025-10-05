@@ -11,25 +11,73 @@
 }
 
 /* ============ HEADER ============ */
+/* Header */
 .vouchers-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fff;
-  padding: 18px 28px;
-  border-radius: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  gap: 16px;
+  flex-wrap: wrap; /* để không vỡ layout trên màn nhỏ */
 }
 
-.vouchers-header h1 {
-  font-size: 1.7rem;
-  font-weight: 700;
-  color: #1e293b;
-  letter-spacing: -0.5px;
+.vouchers-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
 }
+
+.vouchers-title h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #1e293b;
+}
+
+
+/* Nhóm chứa filter + nút tạo */
+.vouchers-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Bộ lọc trạng thái */
+.status-filter {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #d0d7de;
+  background: #f9fafb;
+  font-size: 0.95rem;
+  color: #1e293b;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  min-width: 180px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.status-filter:hover,
+.status-filter:focus {
+  border-color: #007bff;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+  outline: none;
+}
+
+/* Responsive (điện thoại, tablet nhỏ) */
+@media (max-width: 600px) {
+  .vouchers-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .vouchers-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 
 /* ============ CREATE BUTTON ============ */
 .create-btn {
@@ -213,4 +261,51 @@
 
 .disabled {
   background-color: #dc2626;
+}
+.status-filter {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 0.9rem;
+  margin-right: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-filter:hover {
+  border-color: #007bff;
+}
+.voucher-search,
+.type-filter,
+.status-filter {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #d0d7de;
+  background: #f9fafb;
+  font-size: 0.95rem;
+  color: #1e293b;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.voucher-search {
+  min-width: 200px;
+  background: #fff;
+}
+
+.voucher-search:focus,
+.type-filter:focus,
+.status-filter:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+  outline: none;
+}
+
+.vouchers-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
