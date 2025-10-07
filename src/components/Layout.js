@@ -135,7 +135,7 @@ const Layout = ({ children }) => {
       { label: 'Import Bills', to: '/imports' },
       { label: 'Statistics', to: '/statistics' },
       { label: 'Voucher', to: '/vouchers' },
-
+      { label: '💬 Chat', to: '/chat' },
     ],
     []
   );

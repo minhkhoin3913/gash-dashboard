@@ -22,21 +22,22 @@ import Feedbacks from "./components/Feedbacks";
 import ImportBills from "./components/ImportBills";
 import Statistics from "./components/Statistics";
 import Layout from "./components/Layout";
-
-// ✅ Import thêm Vouchers component mới tạo
 import Vouchers from "./components/Vouchers";
 
-// ProtectedRoute component to restrict access to admin/manager roles
+// ✅ Import thêm chat component
+import AdminChat from "./components/AdminChat";
+
+// ===============================
+// 🔒 ProtectedRoute (chặn người không có quyền)
+// ===============================
 const ProtectedRoute = ({ children }) => {
   const { user, isAuthLoading } = React.useContext(AuthContext);
   const location = useLocation();
 
   if (isAuthLoading) {
-    // Optionally, show a spinner or null while loading
-    return null;
+    return null; // hoặc spinner
   }
 
-  // Check if user is authenticated and has admin or manager role
   if (!user || !["admin", "manager"].includes(user.role)) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
@@ -44,16 +45,19 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// ===============================
+// 🧠 App Component
+// ===============================
 const App = () => {
   return (
     <Router>
       <AuthProvider>
         <Layout>
           <Routes>
-            {/* Public route */}
+            {/* === Public Route === */}
             <Route path="/login" element={<Login />} />
 
-            {/* Protected routes */}
+            {/* === Protected Routes === */}
             <Route
               path="/"
               element={
@@ -151,12 +155,22 @@ const App = () => {
               }
             />
 
-            {/* ✅ Thêm route mới cho Voucher */}
+            {/* ✅ Vouchers */}
             <Route
               path="/vouchers"
               element={
                 <ProtectedRoute>
                   <Vouchers />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ✅ Admin Chat */}
+            <Route
+              path="/chat"
+              element={
+                <ProtectedRoute>
+                  <AdminChat />
                 </ProtectedRoute>
               }
             />
