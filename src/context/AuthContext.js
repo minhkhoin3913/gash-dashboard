@@ -131,6 +131,59 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const requestSignupOTP = async (email, type = 'register') => {
+    try {
+      const endpoint =
+        type === 'register'
+          ? 'http://localhost:5000/auth/register/request-otp'
+          : 'http://localhost:5000/auth/forgot-password/request-otp';
+      const response = await axios.post(endpoint, { email });
+      return response;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || error.message || 'Failed to request OTP');
+    }
+  };
+
+  const verifyOTP = async (email, otp, formData, type, resend = false) => {
+    try {
+      if (resend) {
+        const endpoint =
+          type === 'register'
+            ? 'http://localhost:5000/auth/register/request-otp'
+            : 'http://localhost:5000/auth/forgot-password/request-otp';
+        const response = await axios.post(endpoint, { email });
+        return response;
+      }
+
+      if (type === 'register') {
+        const response = await axios.post('http://localhost:5000/auth/register/verify-otp', {
+          email,
+          otp,
+        });
+        return response;
+      } else if (type === 'forgot-password') {
+        const response = await axios.post('http://localhost:5000/auth/forgot-password/verify-otp', {
+          email,
+          otp,
+        });
+        return response;
+      }
+    } catch (error) {
+      throw new Error(error.response?.data?.message || error.message || 'Failed to verify OTP');
+    }
+  };
+
+  const resetPassword = async ({ email, newPassword }) => {
+    try {
+      await axios.post('http://localhost:5000/auth/forgot-password/reset', {
+        email,
+        newPassword,
+      });
+    } catch (error) {
+      throw new Error(error.response?.data?.message || error.message || 'Failed to reset password');
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -140,7 +193,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, isAuthLoading }}>
+    <AuthContext.Provider value={{ user, login, signup, requestSignupOTP, verifyOTP, resetPassword, logout, isAuthLoading }}>
       {children}
     </AuthContext.Provider>
   );

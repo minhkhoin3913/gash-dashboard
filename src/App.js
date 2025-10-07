@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 
-// ✅ Import tất cả các component có sẵn
+// Import all existing components
 import Products from "./components/Products";
 import ProductVariants from "./components/ProductVariants";
 import Login from "./components/Login";
@@ -22,9 +22,12 @@ import Feedbacks from "./components/Feedbacks";
 import ImportBills from "./components/ImportBills";
 import Statistics from "./components/Statistics";
 import Layout from "./components/Layout";
-
-// ✅ Import thêm Vouchers component mới tạo
 import Vouchers from "./components/Vouchers";
+
+// Import new Forgot Password components
+import ForgotPassword from "./components/ForgotPassword";
+import OTPVerification from "./components/OTPVerification";
+import ResetPassword from "./components/ResetPassword";
 
 // ProtectedRoute component to restrict access to admin/manager roles
 const ProtectedRoute = ({ children }) => {
@@ -50,8 +53,11 @@ const App = () => {
       <AuthProvider>
         <Layout>
           <Routes>
-            {/* Public route */}
+            {/* Public routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/otp-verification" element={<OTPVerification />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected routes */}
             <Route
@@ -150,8 +156,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
-            {/* ✅ Thêm route mới cho Voucher */}
             <Route
               path="/vouchers"
               element={
