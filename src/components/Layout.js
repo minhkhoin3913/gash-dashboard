@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect, useContext, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import * as Unicons from '@iconscout/react-unicons';
 import '../styles/Layout.css';
 import gashLogo from '../assets/image/gash-logo.svg';
 
 // Constants
 const DROPDOWN_CLOSE_DELAY = 150;
 const ERROR_TIMEOUT = 5000;
-
-
 
 const useClickOutside = (ref, callback) => {
   useEffect(() => {
@@ -31,21 +30,16 @@ const Layout = ({ children }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [error, setError] = useState(null);
   const [logoLoaded, setLogoLoaded] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   // Refs
   const dropdownRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
-  const sidebarRef = useRef(null);
 
-  // Close dropdown and sidebar on click outside
+  // Close dropdown on click outside
   useClickOutside(dropdownRef, useCallback(() => {
     clearTimeout(dropdownTimeoutRef.current);
     dropdownTimeoutRef.current = setTimeout(() => setIsDropdownOpen(false), DROPDOWN_CLOSE_DELAY);
-  }, []));
-
-  useClickOutside(sidebarRef, useCallback(() => {
-    setIsSidebarOpen(false);
   }, []));
 
   // Clear timeout on unmount
@@ -53,10 +47,9 @@ const Layout = ({ children }) => {
     return () => clearTimeout(dropdownTimeoutRef.current);
   }, []);
 
-  // Close dropdown, sidebar, and reset error on route change
+  // Close dropdown and reset error on route change
   useEffect(() => {
     setIsDropdownOpen(false);
-    setIsSidebarOpen(false);
     setError(null);
   }, [location.pathname]);
 
@@ -65,7 +58,7 @@ const Layout = ({ children }) => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         setIsDropdownOpen(false);
-        setIsSidebarOpen(false);
+        setIsSidebarExpanded(false);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -102,42 +95,49 @@ const Layout = ({ children }) => {
   const handleLogoClick = useCallback(
     (e) => {
       e.preventDefault();
-      navigate('/');
+      navigate(user?.role === 'manager' ? '/orders' : '/');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [navigate]
+    [navigate, user]
   );
 
   const handleSidebarToggle = useCallback(() => {
-    setIsSidebarOpen((prev) => !prev);
+    setIsSidebarExpanded((prev) => !prev);
   }, []);
 
-  // Dropdown items
+  // Sidebar items with LineIcons
+  const sidebarItems = useMemo(
+    () => {
+      const items = [
+        { label: 'Cart', to: '/carts', icon: Unicons.UilShoppingCart },
+        { label: 'Category', to: '/categories', icon: Unicons.UilListUl },
+        { label: 'Order', to: '/orders', icon: Unicons.UilShoppingBag },
+        { label: 'Feedback', to: '/feedbacks', icon: Unicons.UilCommentDots },
+        { label: 'Product', to: '/products', icon: Unicons.UilBox },
+        { label: 'Product Specification', to: '/specifications', icon: Unicons.UilFileInfoAlt },
+        { label: 'Product Variant', to: '/variants', icon: Unicons.UilLayerGroup },
+        { label: 'Import Bills', to: '/imports', icon: Unicons.UilFileImport },
+        { label: 'Voucher', to: '/vouchers', icon: Unicons.UilTagAlt },
+        { label: 'Chat', to: '/chat', icon: Unicons.UilChat },
+      ];
+      if (user?.role === 'admin') {
+        items.unshift(
+          { label: 'Account', to: '/accounts', icon: Unicons.UilUsersAlt },
+          { label: 'Statistics', to: '/statistics', icon: Unicons.UilChart }
+        );
+      }
+      return items;
+    },
+    [user]
+  );
+
+  // Dropdown items for account menu
   const dropdownItems = useMemo(
     () => [
       { label: 'My Account', to: '/profile' },
       { label: 'Sign Out', action: handleLogout, className: 'logout-item' },
     ],
     [handleLogout]
-  );
-
-  // Sidebar items
-  const sidebarItems = useMemo(
-    () => [
-      { label: 'Account', to: '/accounts' },
-      { label: 'Cart', to: '/carts' },
-      { label: 'Category', to: '/categories' },
-      { label: 'Order', to: '/orders' },
-      { label: 'Feedback', to: '/feedbacks' },
-      { label: 'Product', to: '/products' },
-      { label: 'Product Specification', to: '/specifications' },
-      { label: 'Product Variant', to: '/variants' },
-      { label: 'Import Bills', to: '/imports' },
-      { label: 'Statistics', to: '/statistics' },
-      { label: 'Voucher', to: '/vouchers' },
-
-    ],
-    []
   );
 
   return (
@@ -161,22 +161,9 @@ const Layout = ({ children }) => {
       {/* Navigation Bar */}
       <nav className="navbar" role="navigation" aria-label="Main navigation">
         <div className="navbar-container">
-          {/* Sidebar Toggle Button */}
-          {user && ['admin', 'manager'].includes(user.role) && (
-            <button
-              className="nav-button sidebar-toggle"
-              onClick={handleSidebarToggle}
-              aria-expanded={isSidebarOpen}
-              aria-label="Toggle admin sidebar"
-              type="button"
-            >
-              ☰
-            </button>
-          )}
-
           {/* Logo */}
           <Link
-            to="/"
+            to={user?.role === 'manager' ? '/orders' : '/'}
             className="logo"
             onClick={handleLogoClick}
             aria-label="Gash homepage"
@@ -194,25 +181,44 @@ const Layout = ({ children }) => {
               style={{ display: logoLoaded ? 'block' : 'none' }}
             />
           </Link>
+        </div>
+      </nav>
 
-          {/* Navigation Actions */}
-          <div className="nav-actions">
-            {/* Account Menu */}
+      {/* Sidebar */}
+      {user && ['admin', 'manager'].includes(user.role) && (
+        <aside
+          className={`sidebar ${isSidebarExpanded ? 'expanded' : 'collapsed'}`}
+          role="navigation"
+          aria-label="Admin navigation"
+        >
+          <nav className="sidebar-nav">
+            {sidebarItems.map((item, index) => (
+              <Link
+                key={index}
+                to={item.to}
+                className="sidebar-item"
+                onClick={() => setIsSidebarExpanded(false)}
+                role="menuitem"
+                title={item.label}
+              >
+                <item.icon size={24} />
+                <span className="sidebar-item-label">{item.label}</span>
+              </Link>
+            ))}
+          </nav>
+          <div className="sidebar-footer">
+            {/* Account Button */}
             <div className="account-menu" ref={dropdownRef}>
               <button
-                className="nav-button account"
+                className="sidebar-item account"
                 onClick={handleAccountClick}
                 aria-expanded={isDropdownOpen}
                 aria-haspopup="true"
                 type="button"
+                title="Account"
               >
-                {user ? (
-                  <>
-                    {`${userDisplayName}`}
-                  </>
-                ) : (
-                  'Hello, Sign In'
-                )}
+                <Unicons.UilUser size={24} />
+                <span className="sidebar-item-label">{user ? userDisplayName : 'Sign In'}</span>
               </button>
               {user && isDropdownOpen && (
                 <div className="dropdown" role="menu">
@@ -245,47 +251,25 @@ const Layout = ({ children }) => {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Admin Sidebar */}
-      {user && ['admin', 'manager'].includes(user.role) && (
-        <aside
-          className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}
-          ref={sidebarRef}
-          role="navigation"
-          aria-label="Admin navigation"
-        >
-          <div className="sidebar-header">
-            <h2>Admin Panel</h2>
+            {/* Extend/Collapse Button */}
             <button
-              className="sidebar-close"
-              onClick={() => setIsSidebarOpen(false)}
-              aria-label="Close sidebar"
+              className="sidebar-item toggle"
+              onClick={handleSidebarToggle}
+              aria-label={isSidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
               type="button"
             >
-              ×
+              <Unicons.UilBars size={24} />
+              <span className="sidebar-item-label">{isSidebarExpanded ? 'Collapse' : 'Expand'}</span>
             </button>
           </div>
-          <nav className="sidebar-nav">
-            {sidebarItems.map((item, index) => (
-              <Link
-                key={index}
-                to={item.to}
-                className="sidebar-item"
-                onClick={() => setIsSidebarOpen(false)}
-                role="menuitem"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
         </aside>
       )}
 
       {/* Main Content */}
-      <main className="main-content" role="main">
+      <main
+        className={`main-content ${user && ['admin', 'manager'].includes(user.role) ? (isSidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed') : ''}`}
+        role="main"
+      >
         {children}
       </main>
     </div>
