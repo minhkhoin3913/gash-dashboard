@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 
-// ✅ Import tất cả các component có sẵn
+// Import all existing components
 import Products from "./components/Products";
 import ProductVariants from "./components/ProductVariants";
 import Login from "./components/Login";
@@ -23,6 +23,11 @@ import ImportBills from "./components/ImportBills";
 import Statistics from "./components/Statistics";
 import Layout from "./components/Layout";
 import Vouchers from "./components/Vouchers";
+
+// Import new Forgot Password components
+import ForgotPassword from "./components/ForgotPassword";
+import OTPVerification from "./components/OTPVerification";
+import ResetPassword from "./components/ResetPassword";
 
 // ✅ Import thêm chat component
 import AdminChat from "./components/AdminChat";
@@ -54,8 +59,11 @@ const App = () => {
       <AuthProvider>
         <Layout>
           <Routes>
-            {/* === Public Route === */}
+            {/* Public routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/otp-verification" element={<OTPVerification />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* === Protected Routes === */}
             <Route

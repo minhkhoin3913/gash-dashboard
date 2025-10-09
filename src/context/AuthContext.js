@@ -78,6 +78,11 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Access denied: Only admin or manager roles are allowed');
       }
 
+      // Restrict access to /accounts and /statistics for non-admins
+      if (account.role !== 'admin' && window.location.pathname.match(/^\/(accounts|statistics)/)) {
+        navigate('/');
+      }
+
       const loginTime = Date.now().toString();
 
       localStorage.setItem('token', token);
@@ -110,6 +115,11 @@ export const AuthProvider = ({ children }) => {
       // Double-check role from server response
       if (!['admin', 'manager'].includes(account.role)) {
         throw new Error('Access denied: Only admin or manager roles are allowed');
+      }
+
+      // Restrict access to /accounts and /statistics for non-admins
+      if (account.role !== 'admin' && window.location.pathname.match(/^\/(accounts|statistics)/)) {
+        navigate('/');
       }
 
       const loginTime = Date.now().toString();
