@@ -41,34 +41,31 @@ const Products = () => {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [colors, setColors] = useState([]);
+  const [sizes, setSizes] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [productVariants, setProductVariants] = useState({});
   const [editingProductId, setEditingProductId] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    pro_name: '',
-    cat_id: '',
-    pro_price: '',
-    imageURL: '',
+    productName: '',
+    categoryId: '',
     description: '',
-    status_product: '',
+    productStatus: '',
   });
   const [newProductForm, setNewProductForm] = useState({
-    pro_name: '',
-    cat_id: '',
-    pro_price: '',
+    productName: '',
+    categoryId: '',
     description: '',
-    status_product: 'active',
+    productStatus: 'pending',
   });
-  const [newProductImageFile, setNewProductImageFile] = useState(null);
-  const [newProductImagePreview, setNewProductImagePreview] = useState('');
+  const [newProductImages, setNewProductImages] = useState([]);
+  const [thumbnailIndex, setThumbnailIndex] = useState(0);
   
   // Filter states
   const [filters, setFilters] = useState({
     searchQuery: '',
     categoryFilter: '',
     statusFilter: '',
-    minPrice: '',
-    maxPrice: '',
-    hasImage: ''
   });
   const [showFilters, setShowFilters] = useState(false);
   
@@ -81,11 +78,9 @@ const Products = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
-  const [editImageFile, setEditImageFile] = useState(null);
-  const [editImagePreview, setEditImagePreview] = useState('');
 
   // Status options
-  const statusOptions = ['active', 'discontinued', 'out_of_stock'];
+  const statusOptions = ['active', 'inactive', 'pending', 'discontinued'];
 
   // Apply filters to products
   const applyFilters = useCallback((productsList, filterSettings) => {
@@ -93,9 +88,9 @@ const Products = () => {
       // Search query filter
       if (filterSettings.searchQuery) {
         const query = filterSettings.searchQuery.toLowerCase();
-        const productName = product.pro_name?.toLowerCase() || '';
+        const productName = product.productName?.toLowerCase() || '';
         const description = product.description?.toLowerCase() || '';
-        const status = product.status_product?.toLowerCase() || '';
+        const status = product.productStatus?.toLowerCase() || '';
         const productId = product._id?.toLowerCase() || '';
         
         if (!productName.includes(query) && 
@@ -107,28 +102,12 @@ const Products = () => {
       }
 
       // Category filter
-      if (filterSettings.categoryFilter && product.cat_id?._id !== filterSettings.categoryFilter) {
+      if (filterSettings.categoryFilter && product.categoryId?._id !== filterSettings.categoryFilter) {
         return false;
       }
 
       // Status filter
-      if (filterSettings.statusFilter && product.status_product !== filterSettings.statusFilter) {
-        return false;
-      }
-
-      // Price range filter
-      if (filterSettings.minPrice && product.pro_price < parseFloat(filterSettings.minPrice)) {
-        return false;
-      }
-      if (filterSettings.maxPrice && product.pro_price > parseFloat(filterSettings.maxPrice)) {
-        return false;
-      }
-
-      // Image filter
-      if (filterSettings.hasImage === 'true' && (!product.imageURL || product.imageURL === '')) {
-        return false;
-      }
-      if (filterSettings.hasImage === 'false' && product.imageURL && product.imageURL !== '') {
+      if (filterSettings.statusFilter && product.productStatus !== filterSettings.statusFilter) {
         return false;
       }
 
@@ -167,10 +146,7 @@ const Products = () => {
   const hasActiveFilters = useCallback(() => {
     return filters.searchQuery || 
            filters.categoryFilter || 
-           filters.statusFilter || 
-           filters.minPrice || 
-           filters.maxPrice || 
-           filters.hasImage;
+           filters.statusFilter;
   }, [filters]);
 
   // Auto-dismiss toast
@@ -183,7 +159,7 @@ const Products = () => {
     }
   }, [toast]);
 
-  // Fetch categories and products sequentially
+  // Fetch categories
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -203,6 +179,37 @@ const Products = () => {
     }
   }, []);
 
+  // Fetch colors
+  const fetchColors = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      const response = await fetchWithRetry('/specifications/color', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Fetched colors:', response);
+      setColors(Array.isArray(response) ? response : []);
+    } catch (err) {
+      console.error('Fetch colors error:', err);
+    }
+  }, []);
+
+  // Fetch sizes
+  const fetchSizes = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      const response = await fetchWithRetry('/specifications/size', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Fetched sizes:', response);
+      setSizes(Array.isArray(response) ? response : []);
+    } catch (err) {
+      console.error('Fetch sizes error:', err);
+    }
+  }, []);
+
+  // Fetch products
   const fetchProducts = useCallback(async () => {
     if (!user?._id) {
       setError('User not authenticated');
@@ -213,11 +220,12 @@ const Products = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
-      const response = await fetchWithRetry('/products', {
+      const response = await fetchWithRetry('/new-products', {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log('Fetched products:', response);
-      setProducts(Array.isArray(response) ? response : []);
+      const productsData = response.success ? response.data : response;
+      setProducts(Array.isArray(productsData) ? productsData : []);
     } catch (err) {
       setError(err.message || 'Failed to load products');
       console.error('Fetch products error:', err);
@@ -226,10 +234,35 @@ const Products = () => {
     }
   }, [user]);
 
+  // Fetch variants for a specific product
+  const fetchProductVariants = useCallback(async (productId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No authentication token found');
+      const response = await fetchWithRetry(`/new-variants?productId=${productId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Fetched variants:', response);
+      const variantsData = response.success ? response.data : response;
+      setProductVariants(prev => ({
+        ...prev,
+        [productId]: Array.isArray(variantsData) ? variantsData : []
+      }));
+    } catch (err) {
+      console.error('Fetch variants error:', err);
+      setProductVariants(prev => ({
+        ...prev,
+        [productId]: []
+      }));
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     await fetchCategories();
+    await fetchColors();
+    await fetchSizes();
     await fetchProducts();
-  }, [fetchCategories, fetchProducts]);
+  }, [fetchCategories, fetchColors, fetchSizes, fetchProducts]);
 
   // Handle filter changes
   const handleFilterChange = useCallback((field, value) => {
@@ -242,9 +275,6 @@ const Products = () => {
       searchQuery: '',
       categoryFilter: '',
       statusFilter: '',
-      minPrice: '',
-      maxPrice: '',
-      hasImage: ''
     });
   }, []);
 
@@ -268,46 +298,34 @@ const Products = () => {
     return response.data?.url || '';
   }, []);
 
-  // Handle file selection (Add form)
-  const handleNewImageFileChange = useCallback((e) => {
+  // Handle adding image to new product
+  const handleAddProductImage = useCallback((e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
-      // Validate file type - must be an image
       if (!file.type.startsWith('image/')) {
-        setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
-        setNewProductImageFile(null);
-        setNewProductImagePreview('');
-        // Reset the file input
+        setToast({ type: 'error', message: 'Please select a valid image file' });
         e.target.value = '';
         return;
       }
-      setNewProductImageFile(file);
-      setNewProductImagePreview(URL.createObjectURL(file));
-    } else {
-      setNewProductImageFile(null);
-      setNewProductImagePreview('');
+      setNewProductImages(prev => [...prev, file]);
+      e.target.value = '';
     }
   }, []);
 
-  // Handle file selection (Edit form)
-  const handleEditImageFileChange = useCallback((e) => {
-    const file = e.target.files && e.target.files[0];
-    if (file) {
-      // Validate file type - must be an image
-      if (!file.type.startsWith('image/')) {
-        setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
-        setEditImageFile(null);
-        setEditImagePreview('');
-        // Reset the file input
-        e.target.value = '';
-        return;
+  // Remove image from new product
+  const handleRemoveProductImage = useCallback((index) => {
+    setNewProductImages(prev => {
+      const newImages = prev.filter((_, i) => i !== index);
+      if (thumbnailIndex >= newImages.length) {
+        setThumbnailIndex(Math.max(0, newImages.length - 1));
       }
-      setEditImageFile(file);
-      setEditImagePreview(URL.createObjectURL(file));
-    } else {
-      setEditImageFile(null);
-      setEditImagePreview('');
-    }
+      return newImages;
+    });
+  }, [thumbnailIndex]);
+
+  // Set thumbnail
+  const handleSetThumbnail = useCallback((index) => {
+    setThumbnailIndex(index);
   }, []);
 
   // Create product
@@ -317,25 +335,13 @@ const Products = () => {
     setToast(null);
 
     // Validate form
-    if (!newProductForm.pro_name || !newProductForm.cat_id || !newProductForm.pro_price) {
-      setError('Product name, category, and price are required');
+    if (!newProductForm.productName || !newProductForm.categoryId || !newProductForm.description) {
+      setError('Product name, category, and description are required');
       setLoading(false);
       return;
     }
-    if (isNaN(newProductForm.pro_price) || newProductForm.pro_price <= 0) {
-      setError('Price must be a positive number');
-      setLoading(false);
-      return;
-    }
-    if (!newProductImageFile) {
-      setError('Please upload a product image');
-      setLoading(false);
-      return;
-    }
-    // Additional validation to ensure file is an image
-    if (!newProductImageFile.type.startsWith('image/')) {
-      setError('Product update failed, information remains unchanged');
-      setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
+    if (newProductImages.length === 0) {
+      setError('Please upload at least one product image');
       setLoading(false);
       return;
     }
@@ -343,43 +349,48 @@ const Products = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
-      const imageURLToUse = await uploadSingleImage(newProductImageFile);
-      if (!imageURLToUse) {
-        throw new Error('Image upload failed');
-      }
-      const response = await apiClient.post('/products', {
+      
+      // Create product first
+      const response = await apiClient.post('/new-products', {
         ...newProductForm,
-        imageURL: imageURLToUse,
-        pro_price: parseFloat(newProductForm.pro_price),
+        productStatus: 'pending', // Set to pending as per requirement
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       console.log('Product created:', response.data);
+      const newProduct = response.data.success ? response.data.data : response.data;
+      
+      // Upload images and create variants
+      // Note: Since we're uploading images for the product, we'll need to save them
+      // For now, we'll just upload the thumbnail
+      // In a complete implementation, you would create variants here with uploaded images
+      
       // Normalize the response to match the populated format
-      const newProduct = {
-        ...response.data.product,
-        cat_id: categories.find(cat => cat._id === newProductForm.cat_id) || { _id: newProductForm.cat_id, cat_name: 'N/A' },
+      const productWithCategory = {
+        ...newProduct,
+        categoryId: categories.find(cat => cat._id === newProductForm.categoryId) || { _id: newProductForm.categoryId, cat_name: 'N/A' },
       };
-      setProducts(prev => [...prev, newProduct]);
-      setToast({ type: 'success', message: 'Product created successfully' });
+      
+      setProducts(prev => [...prev, productWithCategory]);
+      setToast({ type: 'success', message: 'Product created successfully. Now you can add variants.' });
       setNewProductForm({
-        pro_name: '',
-        cat_id: '',
-        pro_price: '',
+        productName: '',
+        categoryId: '',
         description: '',
-        status_product: 'active',
+        productStatus: 'pending',
       });
-      setNewProductImageFile(null);
-      setNewProductImagePreview('');
+      setNewProductImages([]);
+      setThumbnailIndex(0);
       setShowAddForm(false);
     } catch (err) {
-      setError(err.message || 'Failed to create product');
-      setToast({ type: 'error', message: err.message || 'Failed to create product' });
+      setError(err.response?.data?.message || err.message || 'Failed to create product');
+      setToast({ type: 'error', message: err.response?.data?.message || err.message || 'Failed to create product' });
       console.error('Create product error:', err);
     } finally {
       setLoading(false);
     }
-  }, [newProductForm, categories]);
+  }, [newProductForm, newProductImages, categories, thumbnailIndex]);
 
   // Update product
   const updateProduct = useCallback(async (productId) => {
@@ -388,20 +399,8 @@ const Products = () => {
     setToast(null);
 
     // Validate form
-    if (!editFormData.pro_name || !editFormData.cat_id) {
+    if (!editFormData.productName || !editFormData.categoryId) {
       setError('Product name and category are required');
-      setLoading(false);
-      return;
-    }
-    if (isNaN(editFormData.pro_price) || editFormData.pro_price <= 0) {
-      setError('Price must be a positive number');
-      setLoading(false);
-      return;
-    }
-    // Additional validation to ensure file is an image if editing image
-    if (editImageFile && !editImageFile.type.startsWith('image/')) {
-      setError('Product update failed, information remains unchanged');
-      setToast({ type: 'error', message: 'Product update failed, information remains unchanged' });
       setLoading(false);
       return;
     }
@@ -409,56 +408,45 @@ const Products = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
-      let imageURLToUse = editFormData.imageURL;
-      if (editImageFile) {
-        imageURLToUse = await uploadSingleImage(editImageFile);
-        if (!imageURLToUse) {
-          throw new Error('Image upload failed');
-        }
-      }
-      const response = await apiClient.put(`/products/${productId}`, {
-        ...editFormData,
-        imageURL: imageURLToUse,
-        pro_price: parseFloat(editFormData.pro_price),
-      }, {
+      
+      const response = await apiClient.put(`/new-products/${productId}`, editFormData, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       console.log('Product updated:', response.data);
+      const updatedProduct = response.data.success ? response.data.data : response.data;
+      
       // Normalize the response to match the populated format
-      const updatedProduct = {
-        ...response.data.product,
-        imageURL: imageURLToUse, // Ensure the new image URL is used
-        cat_id: categories.find(cat => cat._id === editFormData.cat_id) || { _id: editFormData.cat_id, cat_name: 'N/A' },
+      const productWithCategory = {
+        ...updatedProduct,
+        categoryId: categories.find(cat => cat._id === editFormData.categoryId) || { _id: editFormData.categoryId, cat_name: 'N/A' },
       };
+      
       setProducts(prev =>
         prev.map(product =>
-          product._id === productId ? updatedProduct : product
+          product._id === productId ? productWithCategory : product
         )
       );
       setToast({ type: 'success', message: 'Product updated successfully' });
       setEditingProductId(null);
       setEditFormData({
-        pro_name: '',
-        cat_id: '',
-        pro_price: '',
-        imageURL: '',
+        productName: '',
+        categoryId: '',
         description: '',
-        status_product: '',
+        productStatus: '',
       });
-      setEditImageFile(null);
-      setEditImagePreview('');
     } catch (err) {
-      setError(err.message || 'Failed to update product');
-      setToast({ type: 'error', message: err.message || 'Failed to update product' });
+      setError(err.response?.data?.message || err.message || 'Failed to update product');
+      setToast({ type: 'error', message: err.response?.data?.message || err.message || 'Failed to update product' });
       console.error('Update product error:', err);
     } finally {
       setLoading(false);
     }
-  }, [editFormData, categories, editImageFile, uploadSingleImage]);
+  }, [editFormData, categories]);
 
-  // Delete product
+  // Delete product (soft delete)
   const deleteProduct = useCallback(async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    if (!window.confirm('Are you sure you want to delete this product? This will set it to discontinued status.')) return;
 
     setLoading(true);
     setError('');
@@ -467,17 +455,26 @@ const Products = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
-      await apiClient.delete(`/products/${productId}`, {
+      
+      await apiClient.delete(`/new-products/${productId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       console.log('Product deleted:', productId);
-      setProducts(prev => prev.filter(product => product._id !== productId));
-      setToast({ type: 'success', message: 'Product deleted successfully' });
+      
+      // Update the product status to discontinued instead of removing from list
+      setProducts(prev =>
+        prev.map(product =>
+          product._id === productId ? { ...product, productStatus: 'discontinued' } : product
+        )
+      );
+      
+      setToast({ type: 'success', message: 'Product discontinued successfully' });
       if (selectedProductId === productId) setSelectedProductId(null);
       if (editingProductId === productId) setEditingProductId(null);
     } catch (err) {
-      setError(err.message || 'Failed to delete product');
-      setToast({ type: 'error', message: err.message || 'Failed to delete product' });
+      setError(err.response?.data?.message || err.message || 'Failed to delete product');
+      setToast({ type: 'error', message: err.response?.data?.message || err.message || 'Failed to delete product' });
       console.error('Delete product error:', err);
     } finally {
       setLoading(false);
@@ -500,37 +497,39 @@ const Products = () => {
 
   // Toggle product details visibility
   const handleToggleDetails = useCallback((productId) => {
-    setSelectedProductId(prev => prev === productId ? null : productId);
-  }, []);
+    setSelectedProductId(prev => {
+      const newSelectedId = prev === productId ? null : productId;
+      if (newSelectedId && !productVariants[productId]) {
+        fetchProductVariants(productId);
+      }
+      return newSelectedId;
+    });
+  }, [productVariants, fetchProductVariants]);
 
   // Start editing product
   const handleEditProduct = useCallback((product) => {
+    if (product.productStatus === 'discontinued') {
+      setToast({ type: 'error', message: 'Cannot edit discontinued products' });
+      return;
+    }
     setEditingProductId(product._id);
     setEditFormData({
-      pro_name: product.pro_name || '',
-      cat_id: product.cat_id?._id || product.cat_id || '',
-      pro_price: product.pro_price ? product.pro_price.toFixed(2) : '',
-      imageURL: product.imageURL || '',
+      productName: product.productName || '',
+      categoryId: product.categoryId?._id || product.categoryId || '',
       description: product.description || '',
-      status_product: product.status_product || 'active',
+      productStatus: product.productStatus || 'pending',
     });
-    setEditImageFile(null);
-    setEditImagePreview('');
   }, []);
 
   // Cancel editing
   const handleCancelEdit = useCallback(() => {
     setEditingProductId(null);
     setEditFormData({
-      pro_name: '',
-      cat_id: '',
-      pro_price: '',
-      imageURL: '',
+      productName: '',
+      categoryId: '',
       description: '',
-      status_product: '',
+      productStatus: '',
     });
-    setEditImageFile(null);
-    setEditImagePreview('');
   }, []);
 
   // Handle field change for edit form
@@ -557,13 +556,13 @@ const Products = () => {
   const toggleAddForm = useCallback(() => {
     setShowAddForm(prev => !prev);
     setNewProductForm({
-      pro_name: '',
-      cat_id: '',
-      pro_price: '',
-      imageURL: '',
+      productName: '',
+      categoryId: '',
       description: '',
-      status_product: 'active',
+      productStatus: 'pending',
     });
+    setNewProductImages([]);
+    setThumbnailIndex(0);
     setError('');
   }, []);
 
@@ -688,50 +687,6 @@ const Products = () => {
                   ))}
                 </select>
               </div>
-
-              {/* Price Range Filters */}
-              <div className="products-filter-group">
-                <label htmlFor="minPrice" className="products-filter-label">Min Price</label>
-                <input
-                  type="number"
-                  id="minPrice"
-                  value={filters.minPrice}
-                  onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                  className="products-filter-input"
-                />
-              </div>
-
-              <div className="products-filter-group">
-                <label htmlFor="maxPrice" className="products-filter-label">Max Price</label>
-                <input
-                  type="number"
-                  id="maxPrice"
-                  value={filters.maxPrice}
-                  onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-                  placeholder="999.99"
-                  step="0.01"
-                  min="0"
-                  className="products-filter-input"
-                />
-              </div>
-
-              {/* Image Filter */}
-              <div className="products-filter-group">
-                <label htmlFor="hasImage" className="products-filter-label">Image Status</label>
-                <select
-                  id="hasImage"
-                  value={filters.hasImage}
-                  onChange={(e) => handleFilterChange('hasImage', e.target.value)}
-                  className="products-filter-select"
-                >
-                  <option value="">All Products</option>
-                  <option value="true">With Image</option>
-                  <option value="false">Without Image</option>
-                </select>
-              </div>
             </div>
           </div>
 
@@ -757,12 +712,12 @@ const Products = () => {
           <h2 className="products-form-title">Add New Product</h2>
           <div className="products-form-grid">
             <div className="products-form-group">
-              <label htmlFor="new-pro-name">Product Name *</label>
+              <label htmlFor="new-product-name">Product Name *</label>
               <input
-                id="new-pro-name"
+                id="new-product-name"
                 type="text"
-                value={newProductForm.pro_name}
-                onChange={(e) => handleNewProductFieldChange(e, 'pro_name')}
+                value={newProductForm.productName}
+                onChange={(e) => handleNewProductFieldChange(e, 'productName')}
                 className="products-form-input"
                 aria-label="Product name"
                 required
@@ -772,8 +727,8 @@ const Products = () => {
               <label htmlFor="new-cat-id">Category *</label>
               <select
                 id="new-cat-id"
-                value={newProductForm.cat_id}
-                onChange={(e) => handleNewProductFieldChange(e, 'cat_id')}
+                value={newProductForm.categoryId}
+                onChange={(e) => handleNewProductFieldChange(e, 'categoryId')}
                 className="products-form-select"
                 aria-label="Product category"
                 required
@@ -786,57 +741,9 @@ const Products = () => {
                 ))}
               </select>
             </div>
-            <div className="products-form-group">
-              <label htmlFor="new-pro-price">Price *</label>
-              <input
-                id="new-pro-price"
-                type="number"
-                step="0.01"
-                value={newProductForm.pro_price}
-                onChange={(e) => handleNewProductFieldChange(e, 'pro_price')}
-                className="products-form-input"
-                aria-label="Product price"
-                required
-              />
-            </div>
-            <div className="products-form-group products-file-group">
-              <label htmlFor="new-image-file">Upload Image</label>
-              <div className="products-file-input">
-                <input
-                  id="new-image-file"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleNewImageFileChange}
-                  aria-label="Upload product image file"
-                />
-              </div>
-              {newProductImagePreview && (
-                <div className="products-image-preview">
-                  <img
-                    src={newProductImagePreview}
-                    alt="Preview"
-                    className="products-image"
-                  />
-                </div>
-              )}
-            </div>
-            <div className="products-form-group products-status-group">
-              <label htmlFor="new-status-product">Status</label>
-              <select
-                id="new-status-product"
-                value={newProductForm.status_product}
-                onChange={(e) => handleNewProductFieldChange(e, 'status_product')}
-                className="products-form-select"
-                aria-label="Product status"
-              >
-                {statusOptions.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
           </div>
           <div className="products-form-group products-description-group">
-            <label htmlFor="new-description">Description</label>
+            <label htmlFor="new-description">Description *</label>
             <textarea
               id="new-description"
               value={newProductForm.description}
@@ -844,8 +751,67 @@ const Products = () => {
               className="products-form-textarea products-description-textarea"
               aria-label="Product description"
               placeholder="Enter product description..."
+              required
             />
           </div>
+          
+          {/* Product Images */}
+          <div className="products-form-group">
+            <label>Product Images *</label>
+            <div className="products-images-container">
+              {newProductImages.map((image, index) => (
+                <div key={index} className="products-image-item">
+                  <img 
+                    src={URL.createObjectURL(image)} 
+                    alt={`Product ${index + 1}`} 
+                    className="products-image-preview"
+                  />
+                  <div className="products-image-actions">
+                    {thumbnailIndex === index && (
+                      <span className="products-thumbnail-badge">Thumbnail</span>
+                    )}
+                    {thumbnailIndex !== index && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetThumbnail(index)}
+                        className="products-set-thumbnail-button"
+                      >
+                        Set as Thumbnail
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveProductImage(index)}
+                      className="products-remove-image-button"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="products-add-image-button">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAddProductImage}
+                  id="add-product-image"
+                  style={{ display: 'none' }}
+                />
+                <label htmlFor="add-product-image" className="products-add-image-label">
+                  <span className="products-add-icon">+</span>
+                  <span>Add Image</span>
+                </label>
+              </div>
+            </div>
+            <p className="products-form-hint">
+              {newProductImages.length === 0 
+                ? 'Add at least one image. The first image will be set as thumbnail by default.' 
+                : newProductImages.length === 1 
+                ? 'This image will be used as the thumbnail.' 
+                : `${newProductImages.length} images added. Click "Set as Thumbnail" to change the main image.`}
+            </p>
+          </div>
+
           <div className="products-form-actions">
             <button
               onClick={handleCreateSubmit}
@@ -854,14 +820,6 @@ const Products = () => {
               disabled={loading}
             >
               Create Product
-            </button>
-            <button
-              onClick={toggleAddForm}
-              className="products-cancel-button"
-              aria-label="Cancel creating product"
-              disabled={loading}
-            >
-              Cancel
             </button>
           </div>
         </div>
@@ -903,8 +861,6 @@ const Products = () => {
                 <th>#</th>
                 <th>Product Name</th>
                 <th>Category</th>
-                <th>Price</th>
-                <th>Image</th>
                 <th>Description</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -913,27 +869,27 @@ const Products = () => {
             <tbody>
               {currentProducts.map((product, index) => (
                 <React.Fragment key={product._id}>
-                  <tr className="products-table-row">
+                  <tr className={`products-table-row ${product.productStatus === 'discontinued' ? 'products-discontinued' : ''}`}>
                     <td>{startIndex + index + 1}</td>
                     <td>
                       {editingProductId === product._id ? (
                         <input
                           type="text"
-                          value={editFormData.pro_name}
-                          onChange={(e) => handleEditFieldChange(e, 'pro_name')}
+                          value={editFormData.productName}
+                          onChange={(e) => handleEditFieldChange(e, 'productName')}
                           className="products-form-input"
                           aria-label="Product name"
                           required
                         />
                       ) : (
-                        product.pro_name || 'N/A'
+                        product.productName || 'N/A'
                       )}
                     </td>
                     <td>
                       {editingProductId === product._id ? (
                         <select
-                          value={editFormData.cat_id}
-                          onChange={(e) => handleEditFieldChange(e, 'cat_id')}
+                          value={editFormData.categoryId}
+                          onChange={(e) => handleEditFieldChange(e, 'categoryId')}
                           className="products-field-select"
                           aria-label="Product category"
                           required
@@ -946,63 +902,7 @@ const Products = () => {
                           ))}
                         </select>
                       ) : (
-                        getCategoryName(product.cat_id)
-                      )}
-                    </td>
-                    <td>
-                      {editingProductId === product._id ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editFormData.pro_price}
-                          onChange={(e) => handleEditFieldChange(e, 'pro_price')}
-                          className="products-form-input"
-                          aria-label="Product price"
-                          required
-                        />
-                      ) : (
-                        formatPrice(product.pro_price)
-                      )}
-                    </td>
-                    <td>
-                      {editingProductId === product._id ? (
-                        <div className="products-edit-image">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleEditImageFileChange}
-                            aria-label="Upload new product image"
-                          />
-                          {editImagePreview ? (
-                            <div className="products-image-preview">
-                              <img
-                                src={editImagePreview}
-                                alt="New image preview"
-                                className="products-image"
-                              />
-                            </div>
-                          ) : product.imageURL ? (
-                            <div className="products-image-preview">
-                              <img
-                                src={product.imageURL}
-                                alt="Current image"
-                                className="products-image"
-                              />
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : product.imageURL ? (
-                        <img
-                          src={product.imageURL}
-                          alt={product.pro_name || 'Product'}
-                          className="products-image"
-                          onError={(e) => {
-                            e.target.alt = 'Image not available';
-                            e.target.style.opacity = '0.5';
-                          }}
-                        />
-                      ) : (
-                        'N/A'
+                        getCategoryName(product.categoryId)
                       )}
                     </td>
                     <td className="products-description">
@@ -1017,20 +917,25 @@ const Products = () => {
                         product.description ? `${product.description.substring(0, 50)}${product.description.length > 50 ? '...' : ''}` : 'N/A'
                       )}
                     </td>
-                    <td className={`products-status-${product.status_product?.toLowerCase() || 'unknown'}`}>
+                    <td className={`products-status-${product.productStatus?.toLowerCase() || 'unknown'}`}>
                       {editingProductId === product._id ? (
                         <select
-                          value={editFormData.status_product}
-                          onChange={(e) => handleEditFieldChange(e, 'status_product')}
+                          value={editFormData.productStatus}
+                          onChange={(e) => handleEditFieldChange(e, 'productStatus')}
                           className="products-field-select"
                           aria-label="Product status"
                         >
-                          {statusOptions.map(status => (
+                          {statusOptions.filter(s => s !== 'discontinued').map(status => (
                             <option key={status} value={status}>{status}</option>
                           ))}
                         </select>
                       ) : (
-                        product.status_product || 'N/A'
+                        <>
+                          {product.productStatus || 'N/A'}
+                          {product.productStatus === 'discontinued' && (
+                            <span className="products-deleted-badge"> (Deleted)</span>
+                          )}
+                        </>
                       )}
                     </td>
                     <td>
@@ -1040,7 +945,7 @@ const Products = () => {
                             onClick={() => handleUpdateSubmit(product._id)}
                             className="products-update-button"
                             aria-label={`Update product ${product._id}`}
-                            disabled={loading || !editFormData.pro_name || !editFormData.cat_id}
+                            disabled={loading || !editFormData.productName || !editFormData.categoryId}
                           >
                             Update
                           </button>
@@ -1059,6 +964,7 @@ const Products = () => {
                             onClick={() => handleToggleDetails(product._id)}
                             className="products-toggle-details"
                             aria-label={selectedProductId === product._id ? `Hide details for product ${product._id}` : `View details for product ${product._id}`}
+                            disabled={product.productStatus === 'discontinued'}
                           >
                             {selectedProductId === product._id ? 'Hide Details' : 'View Details'}
                           </button>
@@ -1066,6 +972,7 @@ const Products = () => {
                             onClick={() => handleEditProduct(product)}
                             className="products-edit-button"
                             aria-label={`Edit product ${product._id}`}
+                            disabled={product.productStatus === 'discontinued'}
                           >
                             Edit
                           </button>
@@ -1073,6 +980,7 @@ const Products = () => {
                             onClick={() => deleteProduct(product._id)}
                             className="products-delete-button"
                             aria-label={`Delete product ${product._id}`}
+                            disabled={product.productStatus === 'discontinued'}
                           >
                             Delete
                           </button>
@@ -1082,12 +990,61 @@ const Products = () => {
                   </tr>
                   {selectedProductId === product._id && (
                     <tr className="products-details-row">
-                      <td colSpan="8">
+                      <td colSpan="6">
                         <div className="products-details-section">
-                          <h2 className="products-details-title">Product Details</h2>
-                          <p className="products-detail-description">
-                            <strong>Description:</strong> {product.description || 'No description available'}
-                          </p>
+                          <h2 className="products-details-title">Product Details & Variants</h2>
+                          <div className="products-detail-info">
+                            <p><strong>Product Name:</strong> {product.productName}</p>
+                            <p><strong>Category:</strong> {getCategoryName(product.categoryId)}</p>
+                            <p><strong>Description:</strong> {product.description || 'No description available'}</p>
+                            <p><strong>Status:</strong> {product.productStatus}</p>
+                          </div>
+                          
+                          <h3 className="products-variants-title">Product Variants</h3>
+                          {productVariants[product._id] ? (
+                            productVariants[product._id].length > 0 ? (
+                              <div className="products-variants-container">
+                                <table className="products-variants-table">
+                                  <thead>
+                                    <tr>
+                                      <th>#</th>
+                                      <th>Image</th>
+                                      <th>Color</th>
+                                      <th>Size</th>
+                                      <th>Price</th>
+                                      <th>Stock</th>
+                                      <th>Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {productVariants[product._id].map((variant, vIndex) => (
+                                      <tr key={variant._id}>
+                                        <td>{vIndex + 1}</td>
+                                        <td>
+                                          {variant.variantImage ? (
+                                            <img 
+                                              src={variant.variantImage} 
+                                              alt={`Variant ${vIndex + 1}`} 
+                                              className="products-variant-image"
+                                            />
+                                          ) : 'N/A'}
+                                        </td>
+                                        <td>{variant.productColorId?.color_name || 'N/A'}</td>
+                                        <td>{variant.productSizeId?.size_name || 'N/A'}</td>
+                                        <td>{formatPrice(variant.variantPrice)}</td>
+                                        <td>{variant.stockQuantity}</td>
+                                        <td>{variant.variantStatus}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <p className="products-no-variants">No variants available for this product. Add variants to activate this product.</p>
+                            )
+                          ) : (
+                            <p className="products-loading-variants">Loading variants...</p>
+                          )}
                         </div>
                       </td>
                     </tr>

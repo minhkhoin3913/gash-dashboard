@@ -337,7 +337,8 @@
   color: var(--amazon-text);
 }
 
-.product-variants-form-select {
+.product-variants-form-select,
+.product-variants-form-input {
   padding: 8px 12px;
   border: 1px solid var(--amazon-border);
   border-radius: 3px;
@@ -345,9 +346,12 @@
   color: var(--amazon-text);
   background-color: var(--amazon-bg);
   transition: border-color var(--transition-fast);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.product-variants-form-select:focus {
+.product-variants-form-select:focus,
+.product-variants-form-input:focus {
   outline: 2px solid var(--amazon-focus);
   outline-offset: 2px;
   border-color: var(--amazon-focus);
@@ -356,26 +360,32 @@
 .product-variants-form-actions {
   display: flex;
   gap: 8px;
+  margin-top: 16px;
 }
 
+.product-variants-create-button,
 .product-variants-submit-button,
 .product-variants-cancel-button {
-  padding: 8px 16px;
-  background-color: var(--amazon-bg);
-  border: 1px solid var(--amazon-border);
+  padding: 10px 24px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
   border-radius: 3px;
   cursor: pointer;
   font-size: 0.875rem;
-  color: var(--amazon-link);
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
+.product-variants-create-button:hover,
 .product-variants-submit-button:hover {
-  background-color: var(--amazon-secondary-bg);
-  color: #c45500;
+  background-color: #f7ca00;
+  border-color: #c89411;
 }
 
 .product-variants-cancel-button {
+  background-color: var(--amazon-bg);
+  border: 1px solid var(--amazon-border);
   color: var(--amazon-error);
 }
 
@@ -384,15 +394,89 @@
   color: var(--amazon-error);
 }
 
+.product-variants-create-button:focus,
 .product-variants-submit-button:focus,
 .product-variants-cancel-button:focus {
   outline: 2px solid var(--amazon-focus);
   outline-offset: 2px;
 }
 
+.product-variants-create-button:disabled,
 .product-variants-submit-button:disabled {
   background-color: #e9ecef;
   cursor: not-allowed;
+  border-color: var(--amazon-border);
+}
+
+/* File Input Styling */
+.product-variants-file-group {
+  grid-column: 1 / -1;
+}
+
+.product-variants-file-input-wrapper {
+  margin-top: 4px;
+}
+
+.product-variants-file-input-hidden {
+  display: none;
+}
+
+.product-variants-file-label {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 16px;
+  border: 2px dashed var(--amazon-border);
+  border-radius: 4px;
+  background-color: var(--amazon-secondary-bg);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.product-variants-file-label:hover {
+  border-color: var(--amazon-link);
+  background-color: #e3f2fd;
+}
+
+.product-variants-file-button {
+  padding: 8px 16px;
+  background-color: var(--amazon-primary);
+  border: 1px solid #d5a429;
+  border-radius: 3px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--amazon-text);
+  transition: background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.product-variants-file-label:hover .product-variants-file-button {
+  background-color: #f7ca00;
+}
+
+.product-variants-file-text {
+  margin-left: 12px;
+  font-size: 0.875rem;
+  color: var(--amazon-secondary-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-variants-image-preview {
+  margin-top: 12px;
+  padding: 8px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  background-color: var(--amazon-bg);
+  display: inline-block;
+}
+
+.product-variants-image-preview .product-variants-image {
+  max-width: 200px;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 4px;
 }
 
 /* Variants table */
@@ -428,7 +512,13 @@
 .product-variants-table th:nth-child(5),
 .product-variants-table td:nth-child(5),
 .product-variants-table th:nth-child(6),
-.product-variants-table td:nth-child(6) {
+.product-variants-table td:nth-child(6),
+.product-variants-table th:nth-child(7),
+.product-variants-table td:nth-child(7),
+.product-variants-table th:nth-child(8),
+.product-variants-table td:nth-child(8),
+.product-variants-table th:nth-child(9),
+.product-variants-table td:nth-child(9) {
   text-align: center;
 }
 
@@ -447,34 +537,50 @@
   vertical-align: middle;
 }
 
-.product-variants-table th:nth-child(1) { /* Index */
-  width: 5%;
+/* Column widths - 9 columns total */
+.product-variants-table th:nth-child(1) { /* # */
+  width: 4%;
   min-width: 40px;
 }
 
 .product-variants-table th:nth-child(2) { /* Product */
-  width: 35%;
-  min-width: 200px;
+  width: 18%;
+  min-width: 150px;
 }
 
 .product-variants-table th:nth-child(3) { /* Color */
-  width: 12%;
-  min-width: 80px;
+  width: 10%;
+  min-width: 100px;
 }
 
 .product-variants-table th:nth-child(4) { /* Size */
-  width: 12%;
+  width: 8%;
   min-width: 80px;
 }
 
 .product-variants-table th:nth-child(5) { /* Image */
-  width: 15%;
+  width: 10%;
   min-width: 100px;
 }
 
-.product-variants-table th:nth-child(6) { /* Actions */
-  width: auto;
+.product-variants-table th:nth-child(6) { /* Price */
+  width: 12%;
   min-width: 120px;
+}
+
+.product-variants-table th:nth-child(7) { /* Stock */
+  width: 10%;
+  min-width: 100px;
+}
+
+.product-variants-table th:nth-child(8) { /* Status */
+  width: 10%;
+  min-width: 100px;
+}
+
+.product-variants-table th:nth-child(9) { /* Actions */
+  width: 18%;
+  min-width: 180px;
 }
 
 .product-variants-table td {
@@ -497,12 +603,39 @@
   background-color: var(--amazon-bg);
   cursor: pointer;
   transition: border-color var(--transition-fast);
+  width: 100%;
+  min-width: 120px;
+  box-sizing: border-box;
 }
 
 .product-variants-edit-select:focus {
   outline: 2px solid var(--amazon-focus);
   outline-offset: 2px;
   border-color: var(--amazon-focus);
+}
+
+/* Input fields in table (for editing) */
+.product-variants-table .product-variants-form-input {
+  width: 100%;
+  min-width: 100px;
+  max-width: 200px;
+  padding: 6px 8px;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+/* Specific styling for edit image section */
+.product-variants-edit-image {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.product-variants-edit-image input[type="file"] {
+  font-size: 0.8125rem;
+  width: 100%;
+  max-width: 250px;
 }
 
 .product-variants-edit-button,
@@ -749,6 +882,64 @@
   }
 }
 
+/* Status Colors */
+.product-variants-status-active {
+  color: var(--amazon-success);
+  font-weight: 600;
+}
+
+.product-variants-status-inactive {
+  color: var(--amazon-secondary-text);
+  font-weight: 600;
+}
+
+.product-variants-status-pending {
+  color: var(--amazon-warning);
+  font-weight: 600;
+}
+
+.product-variants-status-discontinued {
+  color: var(--amazon-error);
+  font-weight: 600;
+}
+
+/* Discontinued Row */
+.product-variants-discontinued {
+  opacity: 0.6;
+  background-color: #f5f5f5;
+}
+
+.product-variants-discontinued:hover {
+  background-color: #e9ecef;
+}
+
+/* Deleted Badge */
+.product-variants-deleted-badge {
+  display: inline-block;
+  background-color: var(--amazon-error);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+/* Disabled buttons for discontinued variants */
+.product-variants-edit-button:disabled,
+.product-variants-delete-button:disabled {
+  background-color: #e9ecef;
+  color: var(--amazon-secondary-text);
+  cursor: not-allowed;
+  border-color: var(--amazon-border);
+}
+
+.product-variants-edit-button:disabled:hover,
+.product-variants-delete-button:disabled:hover {
+  background-color: #e9ecef;
+  color: var(--amazon-secondary-text);
+}
+
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .product-variants-retry-button,
@@ -757,6 +948,7 @@
   .product-variants-filter-input,
   .product-variants-filter-select,
   .product-variants-clear-filters,
+  .product-variants-create-button,
   .product-variants-submit-button,
   .product-variants-cancel-button,
   .product-variants-edit-button,
@@ -764,6 +956,7 @@
   .product-variants-delete-button,
   .product-variants-edit-select,
   .product-variants-form-select,
+  .product-variants-form-input,
   .product-variants-pagination-button,
   .product-variants-pagination-page {
     transition: none;
@@ -783,6 +976,7 @@
   .product-variants-filter-input,
   .product-variants-filter-select,
   .product-variants-clear-filters,
+  .product-variants-create-button,
   .product-variants-submit-button,
   .product-variants-cancel-button,
   .product-variants-edit-button,
@@ -790,6 +984,7 @@
   .product-variants-delete-button,
   .product-variants-edit-select,
   .product-variants-form-select,
+  .product-variants-form-input,
   .product-variants-pagination-button,
   .product-variants-pagination-page {
     border-width: 2px;
