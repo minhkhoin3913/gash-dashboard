@@ -6,20 +6,7 @@ import '../styles/Layout.css';
 import gashLogo from '../assets/image/gash-logo.svg';
 
 // Constants
-const DROPDOWN_CLOSE_DELAY = 150;
 const ERROR_TIMEOUT = 5000;
-
-const useClickOutside = (ref, callback) => {
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (ref.current && !ref.current.contains(event.target)) {
-        callback();
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [ref, callback]);
-};
 
 const Layout = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
@@ -27,54 +14,15 @@ const Layout = ({ children }) => {
   const location = useLocation();
 
   // State
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [error, setError] = useState(null);
   const [logoLoaded, setLogoLoaded] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-
-  // Refs
-  const dropdownRef = useRef(null);
-  const dropdownTimeoutRef = useRef(null);
-
-  // Close dropdown on click outside
-  useClickOutside(dropdownRef, useCallback(() => {
-    clearTimeout(dropdownTimeoutRef.current);
-    dropdownTimeoutRef.current = setTimeout(() => setIsDropdownOpen(false), DROPDOWN_CLOSE_DELAY);
-  }, []));
-
-  // Clear timeout on unmount
-  useEffect(() => {
-    return () => clearTimeout(dropdownTimeoutRef.current);
-  }, []);
-
-  // Close dropdown and reset error on route change
-  useEffect(() => {
-    setIsDropdownOpen(false);
-    setError(null);
-  }, [location.pathname]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setIsDropdownOpen(false);
-        setIsSidebarExpanded(false);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // User display name
-  const userDisplayName = useMemo(() => {
-    if (!user) return null;
-    return user.username || user.email?.split('@')[0] || 'Account';
-  }, [user]);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
 
   // Event handlers
   const handleAccountClick = useCallback(() => {
     if (user) {
-      setIsDropdownOpen((prev) => !prev);
+      setIsAccountOpen((prev) => !prev);
     } else {
       navigate('/login', { state: { from: location.pathname } });
     }
@@ -82,7 +30,7 @@ const Layout = ({ children }) => {
 
   const handleLogout = useCallback(async () => {
     try {
-      setIsDropdownOpen(false);
+      setIsAccountOpen(false);
       await logout();
       navigate('/orders');
     } catch (err) {
@@ -131,14 +79,38 @@ const Layout = ({ children }) => {
     [user]
   );
 
-  // Dropdown items for account menu
-  const dropdownItems = useMemo(
+  // Account sublist items
+  const accountItems = useMemo(
     () => [
       { label: 'My Account', to: '/profile' },
       { label: 'Sign Out', action: handleLogout, className: 'logout-item' },
     ],
     [handleLogout]
   );
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsAccountOpen(false);
+        setIsSidebarExpanded(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Reset error and account sublist on route change
+  useEffect(() => {
+    setIsAccountOpen(false);
+    setError(null);
+  }, [location.pathname]);
+
+  // User display name
+  const userDisplayName = useMemo(() => {
+    if (!user) return null;
+    return user.username || user.email?.split('@')[0] || 'Account';
+  }, [user]);
 
   return (
     <div className="layout">
@@ -207,56 +179,57 @@ const Layout = ({ children }) => {
             ))}
           </nav>
           <div className="sidebar-footer">
-            {/* Account Button */}
-            <div className="account-menu" ref={dropdownRef}>
-              <button
-                className="sidebar-item account"
-                onClick={handleAccountClick}
-                aria-expanded={isDropdownOpen}
-                aria-haspopup="true"
-                type="button"
-                title="Account"
-              >
-                <Unicons.UilUser size={24} />
-                <span className="sidebar-item-label">{user ? userDisplayName : 'Sign In'}</span>
-              </button>
-              {user && isDropdownOpen && (
-                <div className="dropdown" role="menu">
-                  {dropdownItems.map((item, index) => (
-                    item.to ? (
-                      <Link
-                        key={index}
-                        to={item.to}
-                        className={`dropdown-item ${item.className || ''}`}
-                        role="menuitem"
-                        onClick={() => setIsDropdownOpen(false)}
-                      >
-                        {item.label}
-                      </Link>
-                    ) : (
-                      <button
-                        key={index}
-                        className={`dropdown-item ${item.className || ''}`}
-                        onClick={() => {
-                          item.action();
-                          setIsDropdownOpen(false);
-                        }}
-                        type="button"
-                        role="menuitem"
-                      >
-                        {item.label}
-                      </button>
-                    )
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Account Button with Sublist */}
+            <button
+              className="sidebar-item"
+              onClick={handleAccountClick}
+              aria-expanded={isAccountOpen}
+              aria-haspopup="true"
+              type="button"
+              title="Account"
+            >
+              <Unicons.UilUser size={24} />
+              <span className="sidebar-item-label">{user ? userDisplayName : 'Sign In'}</span>
+            </button>
+            {user && isAccountOpen && (
+              <div className="account-sublist">
+                {accountItems.map((item, index) => (
+                  item.to ? (
+                    <Link
+                      key={index}
+                      to={item.to}
+                      className={`sidebar-item sublist-item ${item.className || ''}`}
+                      role="menuitem"
+                      onClick={() => setIsAccountOpen(false)}
+                    >
+                      <span className="sublist-icon-placeholder" />
+                      <span className="sidebar-item-label">{item.label}</span>
+                    </Link>
+                  ) : (
+                    <button
+                      key={index}
+                      className={`sidebar-item sublist-item ${item.className || ''}`}
+                      onClick={() => {
+                        item.action();
+                        setIsAccountOpen(false);
+                      }}
+                      type="button"
+                      role="menuitem"
+                    >
+                      <span className="sublist-icon-placeholder" />
+                      <span className="sidebar-item-label">{item.label}</span>
+                    </button>
+                  )
+                ))}
+              </div>
+            )}
             {/* Extend/Collapse Button */}
             <button
-              className="sidebar-item toggle"
+              className="sidebar-item"
               onClick={handleSidebarToggle}
               aria-label={isSidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
               type="button"
+              title={isSidebarExpanded ? 'Collapse' : 'Expand'}
             >
               <Unicons.UilBars size={24} />
               <span className="sidebar-item-label">{isSidebarExpanded ? 'Collapse' : 'Expand'}</span>

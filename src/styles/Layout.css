@@ -15,7 +15,6 @@
   --amazon-link: #007185;
   --amazon-orange: #febd69;
   --amazon-orange-hover: #f7ca00;
-  --amazon-focus: #007185;
   --transition-fast: 0.2s ease;
   --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-medium: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -77,11 +76,6 @@
   opacity: 0.8;
 }
 
-.layout-error-close:focus {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: 2px;
-}
-
 /* Navigation bar */
 .navbar {
   background-color: var(--amazon-dark);
@@ -121,12 +115,6 @@
   opacity: 0.9;
 }
 
-.logo:focus {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
 /* Sidebar */
 .sidebar {
   position: fixed;
@@ -154,7 +142,6 @@
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  padding: 16px 0;
 }
 
 .sidebar-item {
@@ -164,16 +151,13 @@
   color: var(--amazon-bg);
   text-decoration: none;
   font-size: 0.875rem;
+  background: none;
+  border: none;
+  cursor: pointer;
   transition: background-color var(--transition-fast);
 }
 
 .sidebar-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.sidebar-item:focus {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: 2px;
   background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -198,93 +182,26 @@
   border-top: 1px solid var(--amazon-border);
 }
 
-.sidebar-item.account,
-.sidebar-item.toggle {
+.account-sublist {
   display: flex;
-  align-items: center;
-  padding: 10px 16px;
-  background: none;
-  border: none;
-  color: var(--amazon-bg);
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
+  flex-direction: column;
 }
 
-.sidebar-item.account:hover,
-.sidebar-item.toggle:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.sublist-item {
+  padding-left: 28px; /* Indent sublist items */
 }
 
-.sidebar-item.account:focus,
-.sidebar-item.toggle:focus {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: 2px;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Account menu */
-.account-menu {
-  position: relative;
-}
-
-.dropdown {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: var(--amazon-bg);
-  border: 1px solid var(--amazon-border);
-  border-radius: 4px;
-  box-shadow: var(--shadow-medium);
-  min-width: 200px;
-  max-width: 100%;
-  overflow-y: auto;
-  max-height: 300px;
-  z-index: 1000;
-  animation: dropdownFade var(--transition-fast) ease forwards;
-}
-
-@keyframes dropdownFade {
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-.dropdown-item {
-  display: block;
-  width: 100%;
-  padding: 10px 16px;
-  background: none;
-  border: none;
-  color: var(--amazon-text);
-  text-align: left;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dropdown-item:hover {
-  background-color: var(--amazon-secondary-bg);
-}
-
-.dropdown-item:focus {
-  background-color: var(--amazon-secondary-bg);
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: -2px;
-}
-
-.dropdown-item.logout-item {
+.sublist-item.logout-item {
   color: var(--amazon-error);
-  border-top: 1px solid var(--amazon-border);
 }
 
-.dropdown-item.logout-item:hover {
+.sublist-item.logout-item:hover {
   background-color: #fff5f6;
+}
+
+.sublist-icon-placeholder {
+  width: 24px; /* Matches icon size */
+  display: inline-block;
 }
 
 /* Main content */
@@ -368,14 +285,10 @@
 @media (prefers-reduced-motion: reduce) {
   .logo,
   .sidebar-item,
-  .dropdown-item,
-  .layout-error-close,
-  .sidebar-item.account,
-  .sidebar-item.toggle {
+  .layout-error-close {
     transition: none;
   }
 
-  .dropdown,
   .layout-error-notification,
   .sidebar {
     animation: none;
@@ -391,17 +304,8 @@
   }
 
   .sidebar-item,
-  .dropdown-item,
-  .sidebar-item.account,
-  .sidebar-item.toggle,
   .layout-error-close {
     border-width: 2px;
     font-weight: 700;
   }
-}
-
-/* Focus visible */
-*:focus-visible {
-  outline: 2px solid var(--amazon-focus);
-  outline-offset: 2px;
 }
