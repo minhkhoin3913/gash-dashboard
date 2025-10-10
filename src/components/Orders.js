@@ -59,9 +59,9 @@ apiClient.interceptors.response.use(
         ? "Unauthorized access - please log in"
         : status === 404
           ? "Resource not found"
-          : status >= 500
-            ? "Server error - please try again later"
-            : "Network error - please check your connection";
+        : status >= 500
+          ? "Server error - please try again later"
+          : "Network error - please check your connection";
     return Promise.reject({ ...error, message });
   }
 );
@@ -409,7 +409,7 @@ const Orders = () => {
           const uploadResult = await axios.post(
             `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/upload`,
             formData,
-            { headers: { "Content-Type": "multipart/form-formData" } }
+            { headers: { "Content-Type": "multipart/form-data" } }
           );
           setUploadingRefundProof(false);
           if (uploadResult.data?.url) {
@@ -1076,8 +1076,8 @@ const Orders = () => {
                           ) : (
                             <>
                               <p>Rendering {orderDetails.length} order details</p>
-                              <div className="orders-details-table-container">
-                                <table className="orders-details-table">
+                              <div className="orders-details-table-container" style={{ display: 'table', visibility: 'visible', width: '100%' }}>
+                                <table className="orders-details-table" style={{ display: 'table', visibility: 'visible', width: '100%' }}>
                                   <thead>
                                     <tr>
                                       <th>Product</th>
@@ -1086,6 +1086,8 @@ const Orders = () => {
                                       <th>Quantity</th>
                                       <th>Unit Price</th>
                                       <th>Total</th>
+                                      <th>Discount</th>
+                                      <th>Voucher</th>
                                       <th>Feedback</th>
                                       <th>Actions</th>
                                     </tr>
@@ -1098,6 +1100,7 @@ const Orders = () => {
                                         <tr
                                           key={detail._id || index}
                                           className="orders-detail-item-row"
+                                          style={{ display: 'table-row', visibility: 'visible' }}
                                         >
                                           <td>
                                             {detail.variant?.name ||
@@ -1126,6 +1129,12 @@ const Orders = () => {
                                               (detail.unitPrice || detail.UnitPrice || 0) *
                                               (detail.quantity || detail.Quantity || 0)
                                             )}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {index === 0 ? formatPrice(order.discountAmount || 0) : "-"}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {index === 0 ? (order.voucher_id ? order.voucher_id.voucher_name || order.voucher_id : "None") : "-"}
                                           </td>
                                           <td>
                                             {detail.feedback &&
@@ -1219,6 +1228,12 @@ const Orders = () => {
                                             0
                                           )
                                         )}
+                                      </td>
+                                      <td style={{ textAlign: "center", fontWeight: "bold" }}>
+                                        {formatPrice(order.discountAmount || 0)}
+                                      </td>
+                                      <td style={{ textAlign: "center", fontWeight: "bold" }}>
+                                        {order.voucher_id ? order.voucher_id.voucher_name || order.voucher_id : "None"}
                                       </td>
                                       <td colSpan={2}></td>
                                     </tr>
@@ -1366,7 +1381,7 @@ const Orders = () => {
                                     </td>
                                     <td style={{ textAlign: "left" }}>
                                       {order.voucher_id
-                                        ? `${order.voucher_id.voucher_name} (${order.voucher_id.code})`
+                                        ? `${order.voucher_id.voucher_name || order.voucher_id} (${order.voucher_id.code || "N/A"})`
                                         : "None"}
                                     </td>
                                   </tr>
