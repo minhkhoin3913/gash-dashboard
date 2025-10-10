@@ -42,7 +42,13 @@ const Accounts = () => {
   const [accounts, setAccounts] = useState([]);
   const [filteredAccounts, setFilteredAccounts] = useState([]);
   const [editingAccountId, setEditingAccountId] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState({
+    name: '',
+    phone: '',
+    address: '',
+    gender: '',
+    dob: '',
     role: 'user',
     acc_status: 'active',
   });
@@ -158,6 +164,11 @@ const Accounts = () => {
     try {
       const token = localStorage.getItem('token');
       const updateData = {
+        name: editFormData.name,
+        phone: editFormData.phone,
+        address: editFormData.address,
+        gender: editFormData.gender,
+        dob: editFormData.dob,
         role: user.role === 'admin' ? editFormData.role : undefined,
         acc_status: user.role === 'admin' ? editFormData.acc_status : undefined,
       };
@@ -173,7 +184,13 @@ const Accounts = () => {
       );
       setToast({ type: 'success', message: 'Account updated successfully' });
       setEditingAccountId(null);
+      setShowEditModal(false);
       setEditFormData({
+        name: '',
+        phone: '',
+        address: '',
+        gender: '',
+        dob: '',
         role: 'user',
         acc_status: 'active',
       });
@@ -250,15 +267,27 @@ const Accounts = () => {
   const handleEditAccount = useCallback((account) => {
     setEditingAccountId(account._id);
     setEditFormData({
+      name: account.name || '',
+      phone: account.phone || '',
+      address: account.address || '',
+      gender: account.gender || '',
+      dob: account.dob || '',
       role: account.role || 'user',
       acc_status: account.acc_status || 'active',
     });
+    setShowEditModal(true);
   }, []);
 
   // Cancel editing
   const handleCancelEdit = useCallback(() => {
     setEditingAccountId(null);
+    setShowEditModal(false);
     setEditFormData({
+      name: '',
+      phone: '',
+      address: '',
+      gender: '',
+      dob: '',
       role: 'user',
       acc_status: 'active',
     });
@@ -460,21 +489,42 @@ const Accounts = () => {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
+                <th>Address</th>
+                <th>Gender</th>
+                <th>Date of Birth</th>
                 <th>Role</th>
                 <th>Status</th>
+                <th>Created</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {currentAccounts.map((account, index) => (
-                <tr key={account._id} className="accounts-table-row">
+                <tr key={account._id} className={`accounts-table-row ${account.is_deleted ? 'deleted-account' : ''}`}>
                   <td data-label="#">{startIndex + index + 1}</td>
-                  <td data-label="Username">{account.username || 'N/A'}</td>
-                  <td data-label="Name">{account.name || 'N/A'}</td>
-                  <td data-label="Email">{account.email || 'N/A'}</td>
-                  <td data-label="Phone">{account.phone || 'N/A'}</td>
+                  <td data-label="Username">
+                    {account.is_deleted ? '[DELETED]' : (account.username || 'N/A')}
+                  </td>
+                  <td data-label="Name">
+                    {account.is_deleted ? '[DELETED]' : (account.name || 'N/A')}
+                  </td>
+                  <td data-label="Email">
+                    {account.is_deleted ? '[DELETED]' : (account.email || 'N/A')}
+                  </td>
+                  <td data-label="Phone">
+                    {account.is_deleted ? '[DELETED]' : (account.phone || 'N/A')}
+                  </td>
+                  <td data-label="Address">
+                    {account.is_deleted ? '[DELETED]' : (account.address || 'N/A')}
+                  </td>
+                  <td data-label="Gender">
+                    {account.is_deleted ? '[DELETED]' : (account.gender || 'N/A')}
+                  </td>
+                  <td data-label="Date of Birth">
+                    {account.is_deleted ? '[DELETED]' : (account.dob ? new Date(account.dob).toLocaleDateString() : 'N/A')}
+                  </td>
                   <td data-label="Role">
-                    {editingAccountId === account._id && user.role === 'admin' ? (
+                    {editingAccountId === account._id && user.role === 'admin' && !account.is_deleted ? (
                       <select
                         value={editFormData.role}
                         onChange={(e) => handleEditFieldChange(e, 'role')}
@@ -486,11 +536,13 @@ const Accounts = () => {
                         <option value="manager">Manager</option>
                       </select>
                     ) : (
-                      account.role || 'N/A'
+                      <span className={`role-badge ${account.role || 'user'}`}>
+                        {account.role || 'N/A'}
+                      </span>
                     )}
                   </td>
                   <td data-label="Status">
-                    {editingAccountId === account._id && user.role === 'admin' ? (
+                    {editingAccountId === account._id && user.role === 'admin' && !account.is_deleted ? (
                       <select
                         value={editFormData.acc_status}
                         onChange={(e) => handleEditFieldChange(e, 'acc_status')}
@@ -498,14 +550,22 @@ const Accounts = () => {
                         aria-label="Status"
                       >
                         <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
                         <option value="suspended">Suspended</option>
                       </select>
                     ) : (
-                      account.acc_status || 'N/A'
+                      <span className={`status-badge ${account.is_deleted ? 'deleted' : (account.acc_status || 'active')}`}>
+                        {account.is_deleted ? 'DELETED' : (account.acc_status || 'N/A')}
+                      </span>
                     )}
                   </td>
+                  <td data-label="Created">
+                    {new Date(account.createdAt).toLocaleDateString()}
+                  </td>
                   <td data-label="Action">
-                    {account.is_deleted ? null : (
+                    {account.is_deleted ? (
+                      <span className="no-actions">No actions available</span>
+                    ) : (
                       editingAccountId === account._id ? (
                         <div className="accounts-action-buttons">
                           <button
@@ -531,16 +591,16 @@ const Accounts = () => {
                               className="accounts-edit-button"
                               aria-label={`Edit account ${account._id}`}
                             >
-                              Update
+                              Edit
                             </button>
                           )}
                           {(user.role === 'admin' || user._id === account._id) && (
                             <button
                               onClick={() => softDeleteAccount(account._id)}
                               className="accounts-delete-button"
-                              aria-label={`Delete account ${account._id}`}
+                              aria-label={`Disable account ${account._id}`}
                             >
-                              Delete
+                              Disable
                             </button>
                           )}
                         </div>
@@ -589,6 +649,118 @@ const Accounts = () => {
             >
               Next
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="edit-modal-overlay" onClick={handleCancelEdit}>
+          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="edit-modal-header">
+              <h2>Edit Staff Information</h2>
+              <button className="edit-modal-close" onClick={handleCancelEdit}>×</button>
+            </div>
+            <div className="edit-modal-body">
+              <div className="edit-form-grid">
+                <div className="edit-form-group">
+                  <label htmlFor="edit-name">Name</label>
+                  <input
+                    id="edit-name"
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => handleEditFieldChange(e, 'name')}
+                    className="edit-form-input"
+                  />
+                </div>
+                <div className="edit-form-group">
+                  <label htmlFor="edit-phone">Phone</label>
+                  <input
+                    id="edit-phone"
+                    type="text"
+                    value={editFormData.phone}
+                    onChange={(e) => handleEditFieldChange(e, 'phone')}
+                    className="edit-form-input"
+                  />
+                </div>
+                <div className="edit-form-group">
+                  <label htmlFor="edit-address">Address</label>
+                  <input
+                    id="edit-address"
+                    type="text"
+                    value={editFormData.address}
+                    onChange={(e) => handleEditFieldChange(e, 'address')}
+                    className="edit-form-input"
+                  />
+                </div>
+                <div className="edit-form-group">
+                  <label htmlFor="edit-gender">Gender</label>
+                  <select
+                    id="edit-gender"
+                    value={editFormData.gender}
+                    onChange={(e) => handleEditFieldChange(e, 'gender')}
+                    className="edit-form-select"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="edit-form-group">
+                  <label htmlFor="edit-dob">Date of Birth</label>
+                  <input
+                    id="edit-dob"
+                    type="date"
+                    value={editFormData.dob}
+                    onChange={(e) => handleEditFieldChange(e, 'dob')}
+                    className="edit-form-input"
+                  />
+                </div>
+                {user.role === 'admin' && (
+                  <>
+                    <div className="edit-form-group">
+                      <label htmlFor="edit-role">Role</label>
+                      <select
+                        id="edit-role"
+                        value={editFormData.role}
+                        onChange={(e) => handleEditFieldChange(e, 'role')}
+                        className="edit-form-select"
+                      >
+                        <option value="user">User</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="edit-form-group">
+                      <label htmlFor="edit-status">Status</label>
+                      <select
+                        id="edit-status"
+                        value={editFormData.acc_status}
+                        onChange={(e) => handleEditFieldChange(e, 'acc_status')}
+                        className="edit-form-select"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="edit-modal-footer">
+              <button className="edit-modal-cancel" onClick={handleCancelEdit}>
+                Cancel
+              </button>
+              <button 
+                className="edit-modal-save" 
+                onClick={() => handleUpdateSubmit(editingAccountId)}
+                disabled={loading}
+              >
+                {loading ? 'Updating...' : 'Update Account'}
+              </button>
+            </div>
           </div>
         </div>
       )}
