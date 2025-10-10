@@ -61,7 +61,7 @@ const Products = () => {
     productName: '',
     categoryId: '',
     description: '',
-    productStatus: 'draft',
+    productStatus: 'pending',
   });
   const [newProductImages, setNewProductImages] = useState([]);
   const [newProductImagePreviews, setNewProductImagePreviews] = useState([]);
@@ -449,7 +449,7 @@ const Products = () => {
       const response = await apiClient.post('/new-products', {
         ...newProductForm,
         productImageIds: imageData,
-        productStatus: 'draft' // Set to draft by default (no variants yet)
+        productStatus: 'pending' // Set to pending by default (no variants yet)
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -464,7 +464,7 @@ const Products = () => {
         productName: '',
         categoryId: '',
         description: '',
-        productStatus: 'draft',
+        productStatus: 'pending',
       });
       setNewProductImages([]);
       setNewProductImagePreviews([]);
@@ -681,7 +681,7 @@ const Products = () => {
       productName: '',
       categoryId: '',
       description: '',
-      productStatus: 'draft',
+      productStatus: 'pending',
     });
     setNewProductImages([]);
     setNewProductImagePreviews([]);
