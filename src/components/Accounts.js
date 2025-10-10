@@ -201,9 +201,34 @@ const Accounts = () => {
     }
   }, [editFormData, user]);
 
-  // Soft delete account
+  // Disable account (set acc_status = 'inactive')
+  const disableAccount = useCallback(async (accountId) => {
+    if (!window.confirm('Are you sure you want to disable this account? The account will be inactive but not deleted.')) return;
+
+    setError('');
+    setToast(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      await apiClient.put(`/accounts/disable/${accountId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAccounts(prev => prev.map(account => 
+        account._id === accountId 
+          ? { ...account, acc_status: 'inactive' }
+          : account
+      ));
+      setToast({ type: 'success', message: 'Account disabled successfully' });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to disable account');
+      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to disable account' });
+      console.error('Disable account error:', err);
+    }
+  }, []);
+
+  // Soft delete account (set is_deleted = true and acc_status = 'deleted')
   const softDeleteAccount = useCallback(async (accountId) => {
-    if (!window.confirm('Are you sure you want to soft delete this account? This will mark all fields as deleted.')) return;
+    if (!window.confirm('Are you sure you want to delete this account? This will permanently mark the account as deleted.')) return;
 
     setError('');
     setToast(null);
@@ -213,16 +238,20 @@ const Accounts = () => {
       await apiClient.delete(`/accounts/soft/${accountId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setAccounts(prev => prev.filter(account => account._id !== accountId));
-      setToast({ type: 'success', message: 'Account soft deleted successfully' });
+      setAccounts(prev => prev.map(account => 
+        account._id === accountId 
+          ? { ...account, is_deleted: true, acc_status: 'deleted' }
+          : account
+      ));
+      setToast({ type: 'success', message: 'Account deleted successfully' });
       if (editingAccountId === accountId) setEditingAccountId(null);
       if (accountId === user._id) {
         localStorage.removeItem('token');
         navigate('/login', { replace: true });
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to soft delete account');
-      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to soft delete account' });
+      setError(err.response?.data?.message || 'Failed to delete account');
+      setToast({ type: 'error', message: err.response?.data?.message || 'Failed to delete account' });
       console.error('Soft delete account error:', err);
     }
   }, [editingAccountId, user, navigate]);
@@ -594,13 +623,22 @@ const Accounts = () => {
                               Edit
                             </button>
                           )}
+                          {user.role === 'admin' && account.acc_status === 'active' && (
+                            <button
+                              onClick={() => disableAccount(account._id)}
+                              className="accounts-disable-button"
+                              aria-label={`Disable account ${account._id}`}
+                            >
+                              Disable
+                            </button>
+                          )}
                           {(user.role === 'admin' || user._id === account._id) && (
                             <button
                               onClick={() => softDeleteAccount(account._id)}
                               className="accounts-delete-button"
-                              aria-label={`Disable account ${account._id}`}
+                              aria-label={`Delete account ${account._id}`}
                             >
-                              Disable
+                              Delete
                             </button>
                           )}
                         </div>
