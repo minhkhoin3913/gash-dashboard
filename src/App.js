@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 
-// ✅ Import tất cả các component có sẵn
+// ✅ Import các component có sẵn
 import Products from "./components/Products";
 import ProductVariants from "./components/ProductVariants";
 import Login from "./components/Login";
@@ -23,9 +23,10 @@ import ImportBills from "./components/ImportBills";
 import Statistics from "./components/Statistics";
 import Layout from "./components/Layout";
 import Vouchers from "./components/Vouchers";
-
-// ✅ Import thêm chat component
 import AdminChat from "./components/AdminChat";
+
+// ✅ Import trang mới (Thông báo)
+import Notifications from "./components/Notifications";
 
 // ===============================
 // 🔒 ProtectedRoute (chặn người không có quyền)
@@ -34,9 +35,7 @@ const ProtectedRoute = ({ children }) => {
   const { user, isAuthLoading } = React.useContext(AuthContext);
   const location = useLocation();
 
-  if (isAuthLoading) {
-    return null; // hoặc spinner
-  }
+  if (isAuthLoading) return null; // có thể thay bằng spinner loading
 
   if (!user || !["admin", "manager"].includes(user.role)) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
@@ -154,8 +153,6 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
-            {/* ✅ Vouchers */}
             <Route
               path="/vouchers"
               element={
@@ -164,13 +161,21 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-
-            {/* ✅ Admin Chat */}
             <Route
               path="/chat"
               element={
                 <ProtectedRoute>
                   <AdminChat />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ✅ Thêm route Notifications cho admin */}
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
                 </ProtectedRoute>
               }
             />
