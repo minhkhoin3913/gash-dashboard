@@ -58,9 +58,9 @@ apiClient.interceptors.response.use(
         ? "Unauthorized access - please log in"
         : status === 404
           ? "Resource not found"
-          : status >= 500
-            ? "Server error - please try again later"
-            : "Network error - please check your connection";
+        : status >= 500
+          ? "Server error - please try again later"
+          : "Network error - please check your connection";
     return Promise.reject({ ...error, message });
   }
 );
@@ -425,25 +425,16 @@ const Orders = () => {
             changedFields[key] = newVal;
           }
         });
-        // Nếu có refundProofUrl mới thì gửi lên
-        if (refundProofUrl && refundProofUrl !== originalOrder.refund_proof) {
-          changedFields.refund_proof = refundProofUrl;
-        }
-        return changedFields;
-      };
 
-      // Nếu có file refundProofFile thì upload trước
-      if (refundProofFile) {
-        setUploadingRefundProof(true);
-        const formData = new FormData();
-        formData.append("image", refundProofFile);
-        let uploadResult;
-        try {
-          uploadResult = await axios.post("http://localhost:5000/upload", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-        } catch (err) {
-          setToast({ type: "error", message: "Upload refund proof thất bại!" });
+        if (refundProofFile) {
+          setUploadingRefundProof(true);
+          const formData = new FormData();
+          formData.append("image", refundProofFile);
+          const uploadResult = await axios.post(
+            `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/upload`,
+            formData,
+            { headers: { "Content-Type": "multipart/form-data" } }
+          );
           setUploadingRefundProof(false);
           setLoading(false);
           return;
@@ -781,413 +772,605 @@ const Orders = () => {
               </tr>
             </thead>
             <tbody>
-              {currentOrders.map((order, index) => {
-                const isEditEnabled = editingOrderId === order._id;
-                return (
-                  <React.Fragment key={order._id}>
-                    <tr className="orders-table-row">
-                      <td style={{ textAlign: "center" }}>
-                        {startIndex + index + 1}
-                      </td>
-                      <td>
-                        {selectedOrderId === order._id
-                          ? order._id
-                          : order._id?.slice(0, 8) + (order._id?.length > 8 ? '...' : '')}
-                      </td>
-                      <td>{order.acc_id?.name || "N/A"}</td>
-                      <td>{order.phone || order.acc_id?.phone || "N/A"}</td>
-                      <td>{order.addressReceive || "N/A"}</td>
-                      <td style={{ textAlign: "center" }}>
-                        {order.orderDate
-                          ? formatDateVN(order.orderDate)
-                          : "N/A"}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        {formatPrice(order.totalPrice)}
-                      </td>
-                      <td
-                        className={`orders-status-${order.order_status?.toLowerCase() || "unknown"
-                          }`}
-                        style={{ textAlign: "center" }}
-                      >
-                        {isEditEnabled ? (
+              {currentOrders.map((order, index) => (
+                <React.Fragment key={order._id}>
+                  <tr className="orders-table-row">
+                    <td style={{ textAlign: "center" }}>{startIndex + index + 1}</td>
+                    <td>{order._id}</td>
+                    <td style={{ textAlign: "center" }}>{formatDateVN(order.orderDate)}</td>
+                    <td style={{ textAlign: "center" }}>{order.acc_id?.name || order.acc_id?.username || "Guest"}</td>
+                    <td style={{ textAlign: "center" }}>{order.phone}</td>
+                    <td>{order.addressReceive}</td>
+                    <td style={{ textAlign: "center" }}>{formatPrice(order.totalPrice)}</td>
+                    <td style={{ textAlign: "center" }}>{formatPrice(order.discountAmount || 0)}</td>
+                    <td style={{ textAlign: "center" }}>{formatPrice(order.finalPrice || order.totalPrice)}</td>
+                    <td style={{ textAlign: "center" }}>
+                      {editingOrderId === order._id ? (
+                        <select
+                          className="orders-edit-select"
+                          value={editFormData.order_status || order.order_status}
+                          onChange={(e) =>
+                            handleEditChange("order_status", e.target.value)
+                          }
+                          disabled={loading}
+                          aria-label="Edit order status"
+                        >
+                          {orderStatusOptions.map((opt) => (
+                            <option
+                              key={opt.value}
+                              value={opt.value}
+                              disabled={getOrderStatusOptionDisabled(
+                                order.order_status,
+                                opt.value
+                              )}
+                            >
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        displayStatus(order.order_status)
+                      )}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {displayStatus(order.payment_method)}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {editingOrderId === order._id ? (
+                        <select
+                          className="orders-edit-select"
+                          value={editFormData.pay_status || order.pay_status}
+                          onChange={(e) =>
+                            handleEditChange("pay_status", e.target.value)
+                          }
+                          disabled={loading}
+                          aria-label="Edit payment status"
+                        >
+                          {payStatusOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        displayStatus(order.pay_status)
+                      )}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {editingOrderId === order._id ? (
+                        <>
                           <select
-                            value={editFormData.order_status}
-                            onChange={(e) => {
-                              const newStatus = e.target.value;
-                              setEditFormData((prev) => {
-                                let newPayStatus = prev.pay_status;
-                                // Nếu là COD thì delivered = paid, còn lại = unpaid
-                                if (order.payment_method === "COD") {
-                                  newPayStatus = newStatus === "delivered" ? "paid" : "unpaid";
-                                } else {
-                                  // Giữ logic cũ cho các phương thức khác
-                                  newPayStatus = newStatus === "delivered" ? "paid" : prev.pay_status;
-                                }
-                                return {
-                                  ...prev,
-                                  order_status: newStatus,
-                                  pay_status: newPayStatus,
-                                };
+                            className="orders-edit-select"
+                            value={editFormData.refund_status || order.refund_status}
+                            onChange={(e) =>
+                              handleEditChange("refund_status", e.target.value)
+                            }
+                            disabled={loading}
+                            aria-label="Edit refund status"
+                          >
+                            {refundStatusOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          {(editFormData.refund_status === "pending_refund" ||
+                            editFormData.refund_status === "refunded" ||
+                            order.refund_status === "refunded") && (
+                            <div style={{ marginTop: 8 }}>
+                              <input
+                                id={`refund-proof-upload-${order._id}`}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleRefundProofChange}
+                                disabled={uploadingRefundProof}
+                                style={{ marginLeft: 8 }}
+                              />
+                              {(refundProofPreview || editFormData.refund_proof) && (
+                                <div style={{ marginTop: 8 }}>
+                                  <img
+                                    src={refundProofPreview || editFormData.refund_proof}
+                                    alt="Refund proof preview"
+                                    style={{
+                                      maxWidth: 180,
+                                      maxHeight: 180,
+                                      border: "1px solid #ccc",
+                                      marginTop: 4,
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {order.refund_proof && (
+                            <div style={{ marginTop: 4 }}>
+                              <img
+                                src={order.refund_proof}
+                                alt="Refund proof"
+                                style={{
+                                  maxWidth: 180,
+                                  maxHeight: 180,
+                                  border: "1px solid #ccc",
+                                }}
+                              />
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {displayStatus(order.refund_status)}
+                          {order.refund_proof && (
+                            <div style={{ marginTop: 4 }}>
+                              <img
+                                src={order.refund_proof}
+                                alt="Refund proof"
+                                style={{
+                                  maxWidth: 180,
+                                  maxHeight: 180,
+                                  border: "1px solid #ccc",
+                                  cursor: "pointer",
+                                }}
+                                onClick={() => {
+                                  setModalImageUrl(order.refund_proof);
+                                  setShowRefundProofModal(true);
+                                }}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {editingOrderId === order._id ? (
+                        <div className="orders-action-buttons">
+                          <button
+                            onClick={() => {
+                              if (!isOrderDataChanged(order)) {
+                                setToast({
+                                  type: "info",
+                                  message: "No changes detected",
+                                });
+                                setEditingOrderId(null);
+                                setEditFormData({
+                                  order_status: "",
+                                  pay_status: "",
+                                  refund_status: "",
+                                  refund_proof: "",
+                                });
+                                return;
+                              }
+                              updateOrder(order._id, editFormData);
+                            }}
+                            className="orders-update-button"
+                            disabled={loading || uploadingRefundProof}
+                            aria-label={`Update order ${order._id}`}
+                          >
+                            Update
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingOrderId(null);
+                              setEditFormData({
+                                order_status: "",
+                                pay_status: "",
+                                refund_status: "",
+                                refund_proof: "",
+                              });
+                              setRefundProofFile(null);
+                              setRefundProofPreview("");
+                            }}
+                            className="orders-cancel-button"
+                            disabled={loading}
+                            aria-label={`Cancel editing order ${order._id}`}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="orders-action-buttons">
+                          <button
+                            onClick={() =>
+                              setSelectedOrderId(
+                                selectedOrderId === order._id ? null : order._id
+                              )
+                            }
+                            className="orders-edit-button"
+                            aria-label={
+                              selectedOrderId === order._id
+                                ? `Hide details for order ${order._id}`
+                                : `View details for order ${order._id}`
+                            }
+                          >
+                            {selectedOrderId === order._id
+                              ? "Hide Details"
+                              : "View Details"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingOrderId(order._id);
+                              setEditFormData({
+                                order_status: order.order_status,
+                                pay_status: order.pay_status,
+                                refund_status: order.refund_status,
+                                refund_proof: order.refund_proof || "",
                               });
                             }}
-                            className="orders-status-select"
-                            aria-label="Order status"
-                            disabled={!isEditEnabled}
+                            className="orders-edit-button"
+                            aria-label={`Edit order ${order._id}`}
+                            disabled={shouldDisableUpdate(
+                              order.payment_method,
+                              order.order_status,
+                              order.pay_status,
+                              order.refund_status
+                            )}
                           >
-                            {orderStatusOptions.map((status) => (
-                              <option
-                                key={status.value}
-                                value={status.value}
-                                disabled={getOrderStatusOptionDisabled(order.order_status, status.value)}
-                              >
-                                {status.label}
-                              </option>
-                            ))}
-                          </select>
-
-                        ) : (
-                          order.order_status ? displayStatus(order.order_status) : "N/A"
-                        )}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        {order.payment_method ? displayStatus(order.payment_method) : "N/A"}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        {isEditEnabled ? (
-                          <select
-                            value={editFormData.pay_status}
-                            onChange={(e) =>
-                              setEditFormData((prev) => ({
-                                ...prev,
-                                pay_status: e.target.value,
-                              }))
+                            Update
+                          </button>
+                          <button
+                            onClick={() => cancelOrder(order._id)}
+                            className="orders-cancel-button"
+                            aria-label={`Cancel order ${order._id}`}
+                            disabled={
+                              order.order_status !== "pending" || loading
                             }
-                            className="orders-status-select"
-                            aria-label="Payment status"
-                            disabled={!isEditEnabled}
                           >
-                            {payStatusOptions.map((status) => (
-                              <option
-                                key={status.value}
-                                value={status.value}
-                                disabled={
-                                  (order.payment_method === "VNPAY" && status.value === "unpaid") ||
-                                  (order.payment_method === "COD" && status.value === "paid")
-                                }
-                              >
-                                {status.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          order.pay_status ? displayStatus(order.pay_status) : "N/A"
-                        )}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        {isEditEnabled ? (
-                          <>
-                            <select
-                              value={
-                                editFormData.refund_status ||
-                                order.refund_status ||
-                                "not_applicable"
-                              }
-                              onChange={(e) =>
-                                setEditFormData((prev) => ({
-                                  ...prev,
-                                  refund_status: e.target.value,
-                                }))
-                              }
-                              className="orders-status-select"
-                              aria-label="Refund status"
-                              disabled={!isEditEnabled}
-                            >
-                              {refundStatusOptions.map((opt) => {
-                                const currentRefund =
-                                  editFormData.refund_status ||
-                                  order.refund_status ||
-                                  "not_applicable";
-                                let isDisabled = false;
-                                // Nếu order_status khác 'cancelled' thì không thể chọn pending_refund/refunded
-                                if (
-                                  editFormData.order_status !== "cancelled" &&
-                                  (opt.value === "pending_refund" ||
-                                    opt.value === "refunded")
-                                ) {
-                                  isDisabled = true;
-                                }
-                                // Nếu current là refunded, chỉ cho chọn refunded
-                                if (
-                                  currentRefund === "refunded" &&
-                                  opt.value !== "refunded"
-                                ) {
-                                  isDisabled = true;
-                                }
-                                // Nếu current là pending_refund, disable not_applicable
-                                if (
-                                  currentRefund === "pending_refund" &&
-                                  opt.value === "not_applicable"
-                                ) {
-                                  isDisabled = true;
-                                }
-                                return (
-                                  <option
-                                    key={opt.value}
-                                    value={opt.value}
-                                    disabled={isDisabled}
-                                  >
-                                    {opt.label}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                            {/* Nếu chọn refunded thì hiển thị form upload ảnh */}
-                            {(editFormData.refund_status === "refunded" || order.refund_status === "refunded") && (
-                              <div style={{ marginTop: 8 }}>
-                                {/* <label htmlFor={`refund-proof-upload-${order._id}`}>Upload refund proof:</label> */}
-                                <input
-                                  id={`refund-proof-upload-${order._id}`}
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleRefundProofChange}
-                                  disabled={uploadingRefundProof}
-                                  style={{ marginLeft: 8 }}
-                                />
-                                {/* {uploadingRefundProof && <span style={{ color: '#888', marginLeft: 8 }}>Đang upload...</span>} */}
-                                {/* Preview ảnh */}
-                                {(refundProofPreview || editFormData.refund_proof) && (
-                                  <div style={{ marginTop: 8 }}>
-                                    {/* <span>Preview:</span><br /> */}
-                                    <img
-                                      src={refundProofPreview || editFormData.refund_proof}
-                                      alt="Refund proof preview"
-                                      style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc', marginTop: 4 }}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {/* Nếu đã có proof thì hiển thị url */}
-                            {order.refund_proof && (
-                              <>
-                                <br />
-                                <div style={{ marginTop: 4 }}>
-                                  <img src={order.refund_proof} alt="Refund proof" style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc' }} />
-                                </div>
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            {order.refund_status ? displayStatus(order.refund_status) : "N/A"}
-
-                          </>
-                        )}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        {editingOrderId === order._id ? (
-                          <div className="orders-action-buttons">
-                            <button
-                              onClick={() => {
-                                // Validate required fields
-                                if (!isOrderDataChanged(order)) {
-                                  setEditingOrderId(null);
-                                  setEditFormData({
-                                    order_status: "",
-                                    pay_status: "",
-                                    shipping_status: "",
-                                  });
-                                  setToast({ type: "info", message: "No changes detected. Nothing to update." });
-                                  return;
-                                }
-                                // Nếu refund_status là refunded, phải có ảnh (file mới hoặc đã có refund_proof)
-                                const isRefunded = (editFormData.refund_status === "refunded" || order.refund_status === "refunded");
-                                const hasProof = refundProofFile || editFormData.refund_proof || order.refund_proof;
-                                if (isRefunded && !hasProof) {
-                                  setToast({ type: "error", message: "Please select refund confirmation photo!" });
-                                  return;
-                                }
-                                updateOrder(order._id, editFormData);
-                              }}
-                              className="orders-update-button"
-                              aria-label={`Update order ${order._id}`}
-                              disabled={shouldDisableUpdate(
-                                order.payment_method,
-                                order.order_status,
-                                order.pay_status,
-                                order.refund_status
-                              )}
-                            >
-                              Update
-                            </button>
-                            <button
-                              onClick={() => setEditingOrderId(null)}
-                              className="orders-cancel-button"
-                              aria-label={`Cancel editing order ${order._id}`}
-                              disabled={loading}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="orders-action-buttons">
-                            <button
-                              onClick={() =>
-                                setSelectedOrderId(
-                                  selectedOrderId === order._id
-                                    ? null
-                                    : order._id
-                                )
-                              }
-                              className="orders-edit-button"
-                              aria-label={
-                                selectedOrderId === order._id
-                                  ? `Hide details for order ${order._id}`
-                                  : `View details for order ${order._id}`
-                              }
-                            >
-                              {selectedOrderId === order._id
-                                ? "Hide Details"
-                                : "View Details"}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingOrderId(order._id);
-                                setEditFormData({
-                                  order_status: order.order_status,
-                                  pay_status: order.pay_status,
-                                  shipping_status: order.shipping_status,
-                                  refund_proof: order.refund_proof || ""
-                                });
-                              }}
-                              className="orders-edit-button"
-                              aria-label={`Edit order ${order._id}`}
-                              disabled={shouldDisableUpdate(
-                                order.payment_method,
-                                order.order_status,
-                                order.pay_status,
-                                order.refund_status
-                              )}
-                            >
-                              Update
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                    {selectedOrderId === order._id && (
-                      <tr className="orders-details-row">
-                        <td colSpan="8" className="orders-details-cell">
-                          <div className="orders-details-section">
-                            <h2 className="orders-details-title">Order Details</h2>
-                            {orderDetails.filter((detail) => {
-                              const detailOrderId =
-                                typeof detail.order_id === "object"
-                                  ? detail.order_id._id
-                                  : detail.order_id;
-                              return detailOrderId === order._id;
-                            }).length === 0 ? (
-                              <p className="orders-no-details">No details available for this order.</p>
-                            ) : (
-                              <>
-                                <div className="orders-details-table-container">
-                                  <table className="orders-details-table">
-                                    <thead>
-                                      <tr>
-                                        <th>Product</th>
-                                        <th>Color</th>
-                                        <th>Size</th>
-                                        <th>Quantity</th>
-                                        <th>Unit Price</th>
-                                        <th>Total</th>
-                                        <th>Feedback</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {(() => {
-                                        const details = orderDetails.filter((detail) => {
-                                          const detailOrderId =
-                                            typeof detail.order_id === "object"
-                                              ? detail.order_id._id
-                                              : detail.order_id;
-                                          return detailOrderId === order._id;
-                                        });
-                                        const total = details.reduce((sum, detail) => sum + (detail.UnitPrice || 0) * (detail.Quantity || 0), 0);
-                                        return (
-                                          <>
-                                            {details.map((detail) => (
-                                              <tr key={detail._id} className="orders-detail-item-row">
-                                                <td>{detail.variant_id?.pro_id?.pro_name || "Unnamed Product"}</td>
-                                                <td>{detail.variant_id?.color_id?.color_name || "N/A"}</td>
-                                                <td>{detail.variant_id?.size_id?.size_name || "N/A"}</td>
-                                                <td style={{ textAlign: "center" }}>{detail.Quantity || 0}</td>
-                                                <td style={{ textAlign: "center" }}>{formatPrice(detail.UnitPrice)}</td>
-                                                <td style={{ textAlign: "center" }}>{formatPrice((detail.UnitPrice || 0) * (detail.Quantity || 0))}</td>
-                                                <td>{detail.feedback_details || "None"}</td>
-                                              </tr>
-                                            ))}
-                                            <tr className="orders-detail-total-row">
-                                              <td colSpan={5} style={{ textAlign: "right", fontWeight: "bold" }}>Total for all products:</td>
-                                              <td style={{ textAlign: "center", fontWeight: "bold" }}>{formatPrice(total)}</td>
-                                              <td></td>
-                                            </tr>
-                                          </>
-                                        );
-                                      })()}
-                                    </tbody>
-                                  </table>
-                                </div>
-                                {/* Thông tin order phía dưới bảng sản phẩm, mỗi dòng một thông tin */}
-                                <table style={{ marginTop: 24, width: '100%' }}>
+                            Cancel Order
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                  {selectedOrderId === order._id && (
+                    <tr className="orders-details-row">
+                      <td colSpan="14" className="orders-details-cell">
+                        <div className="orders-details-section">
+                          <h2 className="orders-details-title">Order Details</h2>
+                          {orderDetails.length === 0 ? (
+                            <p className="orders-no-details">
+                              No details available for this order. This may be due to no items being associated or restricted access.
+                            </p>
+                          ) : (
+                            <>
+                              <p>Rendering {orderDetails.length} order details</p>
+                              <div className="orders-details-table-container" style={{ display: 'table', visibility: 'visible', width: '100%' }}>
+                                <table className="orders-details-table" style={{ display: 'table', visibility: 'visible', width: '100%' }}>
+                                  <thead>
+                                    <tr>
+                                      <th>Product</th>
+                                      <th>Color</th>
+                                      <th>Size</th>
+                                      <th>Quantity</th>
+                                      <th>Unit Price</th>
+                                      <th>Total</th>
+                                      <th>Discount</th>
+                                      <th>Voucher</th>
+                                      <th>Feedback</th>
+                                      <th>Actions</th>
+                                    </tr>
+                                  </thead>
                                   <tbody>
-                                    <tr>
-                                      <td style={{ textAlign: 'left', width: '180px' }}><strong>Order Status:</strong></td>
-                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.order_status)}</td>
-                                    </tr>
-                                    <tr>
-                                      <td style={{ textAlign: 'left', width: '180px' }}><strong>Payment Method:</strong></td>
-                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.payment_method)}</td>
-                                    </tr>
-                                    <tr>
-                                      <td style={{ textAlign: 'left', width: '180px' }}><strong>Payment Status:</strong></td>
-                                      <td style={{ textAlign: 'left' }}>{displayStatus(order.pay_status)}</td>
-                                    </tr>
-                                    <tr>
-                                      <td style={{ textAlign: 'left', width: '180px' }}><strong>Refund:</strong></td>
-                                      <td style={{ textAlign: 'left' }}>
-                                        {displayStatus(order.refund_status)}
-                                        {order.refund_proof ? (
-                                          <div style={{ marginTop: 4 }}>
-                                            <img
-                                              src={order.refund_proof}
-                                              alt="Refund proof"
-                                              style={{ maxWidth: 180, maxHeight: 180, border: '1px solid #ccc', cursor: 'pointer' }}
-                                              onClick={() => {
-                                                setModalImageUrl(order.refund_proof);
-                                                setShowRefundProofModal(true);
-                                              }}
-                                            />
-                                          </div>
-                                        ) : null}
-                                        {/* Modal hiển thị ảnh refund proof to */}
-                                        <RefundProofModal
-                                          imageUrl={showRefundProofModal ? modalImageUrl : ""}
-                                          onClose={() => setShowRefundProofModal(false)}
-                                        />
+                                    {orderDetails.map((detail, index) => {
+                                      console.log(`Rendering detail ${index}:`, detail);
+                                      console.log(`Variant data for detail ${index}:`, detail.variant);
+                                      return (
+                                        <tr
+                                          key={detail._id || index}
+                                          className="orders-detail-item-row"
+                                          style={{ display: 'table-row', visibility: 'visible' }}
+                                        >
+                                          <td>
+                                            {detail.variant?.name ||
+                                              detail.variant_id?.pro_id?.pro_name ||
+                                              detail.pro_id?.pro_name ||
+                                              "Unnamed Product"}
+                                          </td>
+                                          <td>
+                                            {detail.variant?.color ||
+                                              detail.variant_id?.color_id?.color_name ||
+                                              "N/A"}
+                                          </td>
+                                          <td>
+                                            {detail.variant?.size ||
+                                              detail.variant_id?.size_id?.size_name ||
+                                              "N/A"}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {detail.quantity || detail.Quantity || 0}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {formatPrice(detail.unitPrice || detail.UnitPrice || 0)}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {formatPrice(
+                                              (detail.unitPrice || detail.UnitPrice || 0) *
+                                              (detail.quantity || detail.Quantity || 0)
+                                            )}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {index === 0 ? formatPrice(order.discountAmount || 0) : "-"}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {index === 0 ? (order.voucher_id ? order.voucher_id.voucher_name || order.voucher_id : "None") : "-"}
+                                          </td>
+                                          <td>
+                                            {detail.feedback &&
+                                            (detail.feedback.rating ||
+                                              detail.feedback.content) ? (
+                                              <div>
+                                                {detail.feedback.rating &&
+                                                  `Rating: ${detail.feedback.rating}/5`}
+                                                {detail.feedback.rating &&
+                                                  detail.feedback.content && <br />}
+                                                {detail.feedback.content}
+                                              </div>
+                                            ) : (
+                                              "None"
+                                            )}
+                                          </td>
+                                          <td style={{ textAlign: "center" }}>
+                                            {order.order_status === "delivered" && (
+                                              <div className="orders-action-buttons">
+                                                {detail.feedback &&
+                                                (detail.feedback.rating ||
+                                                  detail.feedback.content) ? (
+                                                  <>
+                                                    <button
+                                                      onClick={() => {
+                                                        setEditingFeedback({
+                                                          orderId: order._id,
+                                                          variantId: detail.variant?._id || detail.variantId || detail._id,
+                                                        });
+                                                        setFeedbackForm({
+                                                          orderId: order._id,
+                                                          variantId: detail.variant?._id || detail.variantId || detail._id,
+                                                          content: detail.feedback.content || "",
+                                                          rating: detail.feedback.rating || null,
+                                                        });
+                                                      }}
+                                                      className="orders-edit-button"
+                                                      aria-label={`Edit feedback for variant ${detail.variant?._id || detail.variantId || detail._id}`}
+                                                    >
+                                                      Edit Feedback
+                                                    </button>
+                                                    <button
+                                                      onClick={() =>
+                                                        deleteFeedback(
+                                                          order._id,
+                                                          detail.variant?._id || detail.variantId || detail._id
+                                                        )
+                                                      }
+                                                      className="orders-cancel-button"
+                                                      aria-label={`Delete feedback for variant ${detail.variant?._id || detail.variantId || detail._id}`}
+                                                    >
+                                                      Delete Feedback
+                                                    </button>
+                                                  </>
+                                                ) : (
+                                                  <button
+                                                    onClick={() => {
+                                                      setFeedbackForm({
+                                                        orderId: order._id,
+                                                        variantId: detail.variant?._id || detail.variantId || detail._id,
+                                                        content: "",
+                                                        rating: null,
+                                                      });
+                                                    }}
+                                                    className="orders-edit-button"
+                                                    aria-label={`Add feedback for variant ${detail.variant?._id || detail.variantId || detail._id}`}
+                                                  >
+                                                    Add Feedback
+                                                  </button>
+                                                )}
+                                              </div>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                    <tr className="orders-detail-total-row">
+                                      <td
+                                        colSpan={5}
+                                        style={{ textAlign: "right", fontWeight: "bold" }}
+                                      >
+                                        Total for all products:
                                       </td>
+                                      <td style={{ textAlign: "center", fontWeight: "bold" }}>
+                                        {formatPrice(
+                                          orderDetails.reduce(
+                                            (sum, detail) =>
+                                              sum +
+                                              (detail.unitPrice || detail.UnitPrice || 0) *
+                                              (detail.quantity || detail.Quantity || 0),
+                                            0
+                                          )
+                                        )}
+                                      </td>
+                                      <td style={{ textAlign: "center", fontWeight: "bold" }}>
+                                        {formatPrice(order.discountAmount || 0)}
+                                      </td>
+                                      <td style={{ textAlign: "center", fontWeight: "bold" }}>
+                                        {order.voucher_id ? order.voucher_id.voucher_name || order.voucher_id : "None"}
+                                      </td>
+                                      <td colSpan={2}></td>
                                     </tr>
                                   </tbody>
                                 </table>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+                              </div>
+                              {(feedbackForm.orderId || editingFeedback) && (
+                                <div style={{ marginTop: 24 }}>
+                                  <h3>
+                                    {editingFeedback
+                                      ? "Edit Feedback"
+                                      : "Add Feedback"}
+                                  </h3>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    <textarea
+                                      value={feedbackForm.content}
+                                      onChange={(e) =>
+                                        handleFeedbackChange("content", e.target.value)
+                                      }
+                                      placeholder="Enter feedback content"
+                                      maxLength={500}
+                                      style={{ height: 100, resize: "vertical" }}
+                                      aria-label="Feedback content"
+                                    />
+                                    <select
+                                      value={feedbackForm.rating || ""}
+                                      onChange={(e) =>
+                                        handleFeedbackChange("rating", parseInt(e.target.value))
+                                      }
+                                      aria-label="Feedback rating"
+                                    >
+                                      <option value="" disabled>
+                                        Select rating
+                                      </option>
+                                      {[1, 2, 3, 4, 5].map((rating) => (
+                                        <option key={rating} value={rating}>
+                                          {rating}/5
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <div className="orders-action-buttons">
+                                      <button
+                                        onClick={editingFeedback ? editFeedback : addFeedback}
+                                        className="orders-update-button"
+                                        disabled={loading}
+                                        aria-label={
+                                          editingFeedback
+                                            ? "Update feedback"
+                                            : "Submit feedback"
+                                        }
+                                      >
+                                        {editingFeedback ? "Update" : "Submit"}
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setFeedbackForm({
+                                            orderId: null,
+                                            variantId: null,
+                                            content: "",
+                                            rating: null,
+                                          });
+                                          setEditingFeedback(null);
+                                        }}
+                                        className="orders-cancel-button"
+                                        disabled={loading}
+                                        aria-label="Cancel feedback"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              <table style={{ marginTop: 24, width: "100%" }}>
+                                <tbody>
+                                  <tr>
+                                    <td
+                                      style={{ textAlign: "left", width: "180px" }}
+                                    >
+                                      <strong>Order Status:</strong>
+                                    </td>
+                                    <td style={{ textAlign: "left" }}>
+                                      {displayStatus(order.order_status)}
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td
+                                      style={{ textAlign: "left", width: "180px" }}
+                                    >
+                                      <strong>Payment Method:</strong>
+                                    </td>
+                                    <td style={{ textAlign: "left" }}>
+                                      {displayStatus(order.payment_method)}
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td
+                                      style={{ textAlign: "left", width: "180px" }}
+                                    >
+                                      <strong>Payment Status:</strong>
+                                    </td>
+                                    <td style={{ textAlign: "left" }}>
+                                      {displayStatus(order.pay_status)}
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td
+                                      style={{ textAlign: "left", width: "180px" }}
+                                    >
+                                      <strong>Refund:</strong>
+                                    </td>
+                                    <td style={{ textAlign: "left" }}>
+                                      {displayStatus(order.refund_status)}
+                                      {order.refund_proof && (
+                                        <div style={{ marginTop: 4 }}>
+                                          <img
+                                            src={order.refund_proof}
+                                            alt="Refund proof"
+                                            style={{
+                                              maxWidth: 180,
+                                              maxHeight: 180,
+                                              border: "1px solid #ccc",
+                                              cursor: "pointer",
+                                            }}
+                                            onClick={() => {
+                                              setModalImageUrl(order.refund_proof);
+                                              setShowRefundProofModal(true);
+                                            }}
+                                          />
+                                        </div>
+                                      )}
+                                      <RefundProofModal
+                                        imageUrl={
+                                          showRefundProofModal ? modalImageUrl : ""
+                                        }
+                                        onClose={() => setShowRefundProofModal(false)}
+                                      />
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td
+                                      style={{ textAlign: "left", width: "180px" }}
+                                    >
+                                      <strong>Voucher:</strong>
+                                    </td>
+                                    <td style={{ textAlign: "left" }}>
+                                      {order.voucher_id
+                                        ? `${order.voucher_id.voucher_name || order.voucher_id} (${order.voucher_id.code || "N/A"})`
+                                        : "None"}
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td
+                                      style={{ textAlign: "left", width: "180px" }}
+                                    >
+                                      <strong>Order Feedback:</strong>
+                                    </td>
+                                    <td style={{ textAlign: "left" }}>
+                                      {order.feedback_ids && order.feedback_ids.length > 0
+                                        ? order.feedback_ids.map((fb, idx) => (
+                                            <div key={idx}>
+                                              {fb.feedback.rating &&
+                                                `Rating: ${fb.feedback.rating}/5`}
+                                              {fb.feedback.rating &&
+                                                fb.feedback.content && <br />}
+                                              {fb.feedback.content}
+                                            </div>
+                                          ))
+                                        : "None"}
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
             </tbody>
           </table>
         </div>
