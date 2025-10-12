@@ -66,6 +66,7 @@ const Layout = ({ children }) => {
         { label: 'Product Variant', to: '/variants', icon: Unicons.UilLayerGroup },
         { label: 'Import Bills', to: '/imports', icon: Unicons.UilFileImport },
         { label: 'Voucher', to: '/vouchers', icon: Unicons.UilTagAlt },
+        { label: 'Notifications', to: '/notifications', icon: Unicons.UilBell },
         { label: 'Chat', to: '/chat', icon: Unicons.UilChat },
       ];
       if (user?.role === 'admin') {
