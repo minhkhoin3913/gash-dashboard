@@ -6,7 +6,7 @@ import axios from "axios";
 
 // API client with interceptors
 const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000",
+  baseURL: (process.env.REACT_APP_API_URL || 'http://localhost:5000').replace(/\/$/, ''),
   timeout: 10000,
 });
 
@@ -26,7 +26,7 @@ apiClient.interceptors.response.use(
   }
 );
 
-// API functions
+// API functions with retry logic
 const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -49,20 +49,21 @@ const ProductVariants = () => {
   const [products, setProducts] = useState([]);
   const [colors, setColors] = useState([]);
   const [sizes, setSizes] = useState([]);
-  const [images, setImages] = useState([]);
   const [editingVariantId, setEditingVariantId] = useState(null);
+  
+  // Edit form data for variant
   const [editFormData, setEditFormData] = useState({
-    pro_id: "",
-    color_id: "",
-    size_id: "",
-    image_id: "",
+    productId: "",
+    productColorId: "",
+    productSizeId: "",
+    variantImage: "",
+    variantPrice: "",
+    stockQuantity: "",
+    variantStatus: "",
   });
-  const [newVariantForm, setNewVariantForm] = useState({
-    pro_id: "",
-    color_id: "",
-    size_id: "",
-    image_id: "",
-  });
+  
+  const [editVariantImageFile, setEditVariantImageFile] = useState(null);
+  const [editVariantImagePreview, setEditVariantImagePreview] = useState("");
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -70,7 +71,7 @@ const ProductVariants = () => {
     productFilter: '',
     colorFilter: '',
     sizeFilter: '',
-    imageFilter: ''
+    statusFilter: '',
   });
   const [showFilters, setShowFilters] = useState(false);
   
@@ -78,11 +79,13 @@ const ProductVariants = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(20);
   
-  const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
+
+  // Status options based on model
+  const statusOptions = ['active', 'inactive', 'discontinued'];
 
   // Apply filters to variants
   const applyFilters = useCallback((variantsList, filterSettings) => {
@@ -90,9 +93,9 @@ const ProductVariants = () => {
       // Search query filter
       if (filterSettings.searchQuery) {
         const query = filterSettings.searchQuery.toLowerCase();
-        const productName = variant.pro_id?.pro_name?.toLowerCase() || '';
-        const colorName = variant.color_id?.color_name?.toLowerCase() || '';
-        const sizeName = variant.size_id?.size_name?.toLowerCase() || '';
+        const productName = variant.productId?.productName?.toLowerCase() || '';
+        const colorName = variant.productColorId?.color_name?.toLowerCase() || '';
+        const sizeName = variant.productSizeId?.size_name?.toLowerCase() || '';
         const variantId = variant._id?.toLowerCase() || '';
         
         if (!productName.includes(query) && 
@@ -104,28 +107,23 @@ const ProductVariants = () => {
       }
 
       // Product filter
-      if (filterSettings.productFilter && variant.pro_id?._id !== filterSettings.productFilter) {
+      if (filterSettings.productFilter && variant.productId?._id !== filterSettings.productFilter) {
         return false;
       }
 
       // Color filter
-      if (filterSettings.colorFilter && variant.color_id?._id !== filterSettings.colorFilter) {
+      if (filterSettings.colorFilter && variant.productColorId?._id !== filterSettings.colorFilter) {
         return false;
       }
 
       // Size filter
-      if (filterSettings.sizeFilter && variant.size_id?._id !== filterSettings.sizeFilter) {
+      if (filterSettings.sizeFilter && variant.productSizeId?._id !== filterSettings.sizeFilter) {
         return false;
       }
 
-      // Image filter
-      if (filterSettings.imageFilter) {
-        if (filterSettings.imageFilter === 'with_image' && !variant.image_id) {
-          return false;
-        }
-        if (filterSettings.imageFilter === 'without_image' && variant.image_id) {
-          return false;
-        }
+      // Status filter
+      if (filterSettings.statusFilter && variant.variantStatus !== filterSettings.statusFilter) {
+        return false;
       }
 
       return true;
@@ -135,7 +133,7 @@ const ProductVariants = () => {
   // Update filtered variants when variants or filters change
   useEffect(() => {
     setFilteredVariants(applyFilters(variants, filters));
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [variants, filters, applyFilters]);
 
   // Pagination calculations
@@ -165,7 +163,7 @@ const ProductVariants = () => {
            filters.productFilter || 
            filters.colorFilter || 
            filters.sizeFilter || 
-           filters.imageFilter;
+           filters.statusFilter;
   }, [filters]);
 
   // Auto-dismiss toast
@@ -178,7 +176,7 @@ const ProductVariants = () => {
     }
   }, [toast]);
 
-  // Fetch variants
+  // Fetch variants using NEW API
   const fetchVariants = useCallback(async () => {
     if (!user?._id) {
       setError("User not authenticated");
@@ -191,10 +189,12 @@ const ProductVariants = () => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No authentication token found");
 
-      const response = await fetchWithRetry("/variants", {
+      const response = await fetchWithRetry("/new-variants", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setVariants(Array.isArray(response) ? response : []);
+      console.log('Fetched new variants:', response);
+      const variantsData = response.data || response;
+      setVariants(Array.isArray(variantsData) ? variantsData : []);
     } catch (err) {
       setError(err.message || "Failed to load variants");
       console.error("Fetch variants error:", err);
@@ -215,7 +215,7 @@ const ProductVariants = () => {
       productFilter: '',
       colorFilter: '',
       sizeFilter: '',
-      imageFilter: ''
+      statusFilter: '',
     });
   }, []);
 
@@ -224,7 +224,7 @@ const ProductVariants = () => {
     setShowFilters(prev => !prev);
   }, []);
 
-  // Fetch products
+  // Fetch products using NEW API
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -233,10 +233,12 @@ const ProductVariants = () => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No authentication token found");
 
-      const response = await fetchWithRetry("/products", {
+      const response = await fetchWithRetry("/new-products", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setProducts(Array.isArray(response) ? response : []);
+      console.log('Fetched new products:', response);
+      const productsData = response.data || response;
+      setProducts(Array.isArray(productsData) ? productsData : []);
     } catch (err) {
       setError(err.message || "Failed to load products");
       console.error("Fetch products error:", err);
@@ -287,39 +289,59 @@ const ProductVariants = () => {
     }
   }, []);
 
-  // Fetch images
-  const fetchImages = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  // Upload helper (single image)
+  const uploadSingleImage = useCallback(async (file) => {
+    const token = localStorage.getItem('token');
+    if (!file) return '';
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await apiClient.post('/upload', formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data?.url || '';
+  }, []);
 
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No authentication token found");
 
-      const response = await fetchWithRetry("/specifications/image", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setImages(Array.isArray(response) ? response : []);
-    } catch (err) {
-      setError(err.message || "Failed to load images");
-      console.error("Fetch images error:", err);
-    } finally {
-      setLoading(false);
+  // Handle variant image file change (edit variant)
+  const handleEditVariantImageChange = useCallback((e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setToast({ type: 'error', message: 'File must be an image' });
+        e.target.value = '';
+        return;
+      }
+      setEditVariantImageFile(file);
+      setEditVariantImagePreview(URL.createObjectURL(file));
+    } else {
+      setEditVariantImageFile(null);
+      setEditVariantImagePreview('');
     }
   }, []);
 
-  // Create variant
-  const createVariant = useCallback(async () => {
+
+  // Update variant using NEW API
+  const updateVariant = useCallback(async (variantId) => {
     setLoading(true);
     setError("");
     setToast(null);
 
-    if (
-      !newVariantForm.pro_id ||
-      !newVariantForm.color_id ||
-      !newVariantForm.size_id
-    ) {
+    // Validate form
+    if (!editFormData.productId || !editFormData.productColorId || !editFormData.productSizeId) {
       setError("Product, color, and size are required");
+      setLoading(false);
+      return;
+    }
+    if (!editFormData.variantPrice || parseFloat(editFormData.variantPrice) < 0) {
+      setError("Valid price is required");
+      setLoading(false);
+      return;
+    }
+    if (!editFormData.stockQuantity || parseInt(editFormData.stockQuantity) < 0) {
+      setError("Valid stock quantity is required");
       setLoading(false);
       return;
     }
@@ -327,65 +349,33 @@ const ProductVariants = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No authentication token found");
-
-      const response = await apiClient.post("/variants", newVariantForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
       
-      // Fetch the newly created variant with populated data
-      const populatedVariant = await fetchWithRetry(`/variants/${response.data.variant._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      let variantImageUrl = editFormData.variantImage;
       
-      setVariants((prev) => [...prev, populatedVariant]);
-      setToast({ type: "success", message: "Variant created successfully" });
-      setNewVariantForm({
-        pro_id: "",
-        color_id: "",
-        size_id: "",
-        image_id: "",
-      });
-      setShowAddForm(false);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to create variant");
-      setToast({
-        type: "error",
-        message: err.response?.data?.message || "Failed to create variant",
-      });
-      console.error("Create variant error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [newVariantForm]);
-
-  // Update variant
-  const updateVariant = useCallback(async (variantId, updatedData) => {
-    setLoading(true);
-    setError("");
-    setToast(null);
-
-    if (!updatedData.pro_id || !updatedData.color_id || !updatedData.size_id) {
-      setError("Product, color, and size are required");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No authentication token found");
-
-      await apiClient.put(
-        `/variants/${variantId}`,
-        updatedData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
+      // Upload new image if selected
+      if (editVariantImageFile) {
+        variantImageUrl = await uploadSingleImage(editVariantImageFile);
+        if (!variantImageUrl) {
+          throw new Error('Image upload failed');
         }
-      );
+      }
+
+      const response = await apiClient.put(`/new-variants/${variantId}`, {
+        ...editFormData,
+        variantImage: variantImageUrl,
+        variantPrice: parseFloat(editFormData.variantPrice),
+        stockQuantity: parseInt(editFormData.stockQuantity),
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      console.log('Variant updated:', response.data);
       
       // Fetch the updated variant with populated data
-      const populatedVariant = await fetchWithRetry(`/variants/${variantId}`, {
+      const populatedResponse = await fetchWithRetry(`/new-variants/${variantId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      const populatedVariant = populatedResponse.data || populatedResponse;
       
       setVariants((prev) =>
         prev.map((variant) =>
@@ -395,27 +385,29 @@ const ProductVariants = () => {
       setToast({ type: "success", message: "Variant updated successfully" });
       setEditingVariantId(null);
       setEditFormData({
-        pro_id: "",
-        color_id: "",
-        size_id: "",
-        image_id: "",
+        productId: "",
+        productColorId: "",
+        productSizeId: "",
+        variantImage: "",
+        variantPrice: "",
+        stockQuantity: "",
+        variantStatus: "",
       });
+      setEditVariantImageFile(null);
+      setEditVariantImagePreview("");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update variant");
-      setToast({
-        type: "error",
-        message: err.response?.data?.message || "Failed to update variant",
-      });
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update variant';
+      setError(errorMessage);
+      setToast({ type: "error", message: errorMessage });
       console.error("Update variant error:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [editFormData, editVariantImageFile, uploadSingleImage]);
 
-  // Delete variant
-  const deleteVariant = useCallback(
-    async (variantId) => {
-      if (!window.confirm("Are you sure you want to delete this variant?"))
+  // Delete variant (soft delete) using NEW API
+  const deleteVariant = useCallback(async (variantId) => {
+      if (!window.confirm("Are you sure you want to delete this variant? This action will mark it as discontinued."))
         return;
 
       setLoading(true);
@@ -426,20 +418,27 @@ const ProductVariants = () => {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("No authentication token found");
 
-        await apiClient.delete(`/variants/${variantId}`, {
+        await apiClient.delete(`/new-variants/${variantId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        
+        console.log('Variant deleted:', variantId);
+        
+        // Update the variant status to discontinued instead of removing it
         setVariants((prev) =>
-          prev.filter((variant) => variant._id !== variantId)
+          prev.map(variant => 
+            variant._id === variantId 
+              ? { ...variant, variantStatus: 'discontinued' }
+              : variant
+          )
         );
-        setToast({ type: "success", message: "Variant deleted successfully" });
+        
+        setToast({ type: "success", message: "Variant marked as discontinued successfully" });
         if (editingVariantId === variantId) setEditingVariantId(null);
       } catch (err) {
-        setError(err.response?.data?.message || "Failed to delete variant");
-        setToast({
-          type: "error",
-          message: err.response?.data?.message || "Failed to delete variant",
-        });
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to delete variant';
+        setError(errorMessage);
+        setToast({ type: "error", message: errorMessage });
         console.error("Delete variant error:", err);
       } finally {
         setLoading(false);
@@ -458,7 +457,6 @@ const ProductVariants = () => {
       fetchProducts();
       fetchColors();
       fetchSizes();
-      fetchImages();
     }
   }, [
     user,
@@ -468,29 +466,38 @@ const ProductVariants = () => {
     fetchProducts,
     fetchColors,
     fetchSizes,
-    fetchImages,
   ]);
 
   // Start editing variant
   const handleEditVariant = useCallback((variant) => {
     setEditingVariantId(variant._id);
     setEditFormData({
-      pro_id: variant.pro_id?._id || variant.pro_id || "",
-      color_id: variant.color_id?._id || variant.color_id || "",
-      size_id: variant.size_id?._id || variant.size_id || "",
-      image_id: variant.image_id?._id || variant.image_id || "",
+      productId: variant.productId?._id || variant.productId || "",
+      productColorId: variant.productColorId?._id || variant.productColorId || "",
+      productSizeId: variant.productSizeId?._id || variant.productSizeId || "",
+      variantImage: variant.variantImage || "",
+      variantPrice: variant.variantPrice?.toString() || "",
+      stockQuantity: variant.stockQuantity?.toString() || "",
+      variantStatus: variant.variantStatus || "active",
     });
+    setEditVariantImageFile(null);
+    setEditVariantImagePreview("");
   }, []);
 
   // Cancel editing
   const handleCancelEdit = useCallback(() => {
     setEditingVariantId(null);
     setEditFormData({
-      pro_id: "",
-      color_id: "",
-      size_id: "",
-      image_id: "",
+      productId: "",
+      productColorId: "",
+      productSizeId: "",
+      variantImage: "",
+      variantPrice: "",
+      stockQuantity: "",
+      variantStatus: "",
     });
+    setEditVariantImageFile(null);
+    setEditVariantImagePreview("");
   }, []);
 
   // Handle field change for edit form
@@ -498,20 +505,37 @@ const ProductVariants = () => {
     setEditFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  // Handle field change for new variant form
-  const handleNewVariantFieldChange = useCallback((field, value) => {
-    setNewVariantForm((prev) => ({ ...prev, [field]: value }));
-  }, []);
 
   // Submit edit form
   const handleEditSubmit = useCallback(() => {
-    updateVariant(editingVariantId, editFormData);
-  }, [editingVariantId, editFormData, updateVariant]);
+    updateVariant(editingVariantId);
+  }, [editingVariantId, updateVariant]);
 
   // Retry fetching variants
   const handleRetry = useCallback(() => {
     fetchVariants();
   }, [fetchVariants]);
+
+  // Format price
+  const formatPrice = useCallback((price) => {
+    if (typeof price !== 'number' || isNaN(price)) return 'N/A';
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  }, []);
+
+  // Get status badge class
+  const getStatusBadgeClass = useCallback((status) => {
+    switch(status) {
+      case 'active': return 'variant-status-active';
+      case 'inactive': return 'variant-status-inactive';
+      case 'discontinued': return 'variant-status-discontinued';
+      default: return 'variant-status-unknown';
+    }
+  }, []);
+
+  // Check if variant is discontinued
+  const isVariantDiscontinued = useCallback((variant) => {
+    return variant.variantStatus === 'discontinued';
+  }, []);
 
   // Show loading state while auth is being verified
   if (isAuthLoading) {
@@ -553,13 +577,6 @@ const ProductVariants = () => {
           >
             {showFilters ? 'Hide Filters' : 'Show Filters'}
           </button>
-          <button
-            className="product-variants-add-button"
-            onClick={() => setShowAddForm(!showAddForm)}
-            aria-label="Add new variant"
-          >
-            {showAddForm ? "Cancel Add" : "Add Variant"}
-          </button>
         </div>
       </div>
 
@@ -596,7 +613,7 @@ const ProductVariants = () => {
                   <option value="">All Products</option>
                   {products.map(product => (
               <option key={product._id} value={product._id}>
-                {product.pro_name}
+                {product.productName}
               </option>
             ))}
           </select>
@@ -638,18 +655,19 @@ const ProductVariants = () => {
           </select>
         </div>
 
-              {/* Image Filter */}
+              {/* Status Filter */}
               <div className="product-variants-filter-group">
-                <label htmlFor="imageFilter" className="product-variants-filter-label">Image Status</label>
+                <label htmlFor="statusFilter" className="product-variants-filter-label">Status</label>
                 <select
-                  id="imageFilter"
-                  value={filters.imageFilter}
-                  onChange={(e) => handleFilterChange('imageFilter', e.target.value)}
+                  id="statusFilter"
+                  value={filters.statusFilter}
+                  onChange={(e) => handleFilterChange('statusFilter', e.target.value)}
                   className="product-variants-filter-select"
                 >
-                  <option value="">All Variants</option>
-                  <option value="with_image">With Image</option>
-                  <option value="without_image">Without Image</option>
+                  <option value="">All Statuses</option>
+                  {statusOptions.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -694,119 +712,6 @@ const ProductVariants = () => {
         </div>
       )}
 
-      {/* Add New Variant Form */}
-      {showAddForm && (
-        <div className="product-variants-add-form">
-          <h2 className="product-variants-add-title">Add New Variant</h2>
-          <div className="product-variants-form-grid">
-            <div className="product-variants-form-group">
-              <label htmlFor="new-pro-id" className="product-variants-form-label">
-                Product *
-              </label>
-            <select
-              id="new-pro-id"
-              value={newVariantForm.pro_id}
-                onChange={(e) =>
-                  handleNewVariantFieldChange("pro_id", e.target.value)
-                }
-                className="product-variants-form-select"
-              required
-            >
-              <option value="">Select Product</option>
-              {products.map((product) => (
-                <option key={product._id} value={product._id}>
-                  {product.pro_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-            <div className="product-variants-form-group">
-              <label htmlFor="new-color-id" className="product-variants-form-label">
-                Color *
-              </label>
-            <select
-              id="new-color-id"
-              value={newVariantForm.color_id}
-                onChange={(e) =>
-                  handleNewVariantFieldChange("color_id", e.target.value)
-                }
-                className="product-variants-form-select"
-              required
-            >
-              <option value="">Select Color</option>
-              {colors.map((color) => (
-                <option key={color._id} value={color._id}>
-                  {color.color_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-            <div className="product-variants-form-group">
-              <label htmlFor="new-size-id" className="product-variants-form-label">
-                Size *
-              </label>
-            <select
-              id="new-size-id"
-              value={newVariantForm.size_id}
-                onChange={(e) =>
-                  handleNewVariantFieldChange("size_id", e.target.value)
-                }
-                className="product-variants-form-select"
-              required
-            >
-              <option value="">Select Size</option>
-              {sizes.map((size) => (
-                <option key={size._id} value={size._id}>
-                  {size.size_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-            <div className="product-variants-form-group">
-              <label htmlFor="new-image-id" className="product-variants-form-label">
-                Image
-              </label>
-            <select
-              id="new-image-id"
-              value={newVariantForm.image_id}
-                onChange={(e) =>
-                  handleNewVariantFieldChange("image_id", e.target.value)
-                }
-                className="product-variants-form-select"
-            >
-              <option value="">Select Image (Optional)</option>
-              {images.map((image) => (
-                <option key={image._id} value={image._id}>
-                    {image.imageURL}
-                </option>
-              ))}
-            </select>
-          </div>
-          </div>
-
-          <div className="product-variants-form-actions">
-            <button
-              onClick={createVariant}
-              className="product-variants-submit-button"
-              disabled={loading}
-              aria-label="Create variant"
-            >
-              Create Variant
-            </button>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="product-variants-cancel-button"
-              disabled={loading}
-              aria-label="Cancel adding variant"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Variants Table */}
       {!loading && filteredVariants.length === 0 && !error ? (
@@ -822,142 +727,208 @@ const ProductVariants = () => {
                 <th>Product</th>
                 <th>Color</th>
                 <th>Size</th>
+                <th>Price</th>
+                <th>Stock</th>
                 <th>Image</th>
+                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {currentVariants.map((variant, index) => (
-                <tr key={variant._id} className="product-variants-table-row">
-                  <td>{startIndex + index + 1}</td>
-                  <td>
-                    {editingVariantId === variant._id ? (
-                      <select
-                        value={editFormData.pro_id}
-                        onChange={(e) =>
-                          handleEditFieldChange("pro_id", e.target.value)
-                        }
-                        className="product-variants-edit-select"
-                        aria-label="Product"
-                      >
-                        {products.map((product) => (
-                          <option key={product._id} value={product._id}>
-                            {product.pro_name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      variant.pro_id?.pro_name || "N/A"
-                    )}
-                  </td>
-                  <td>
-                    {editingVariantId === variant._id ? (
-                      <select
-                        value={editFormData.color_id}
-                        onChange={(e) =>
-                          handleEditFieldChange("color_id", e.target.value)
-                        }
-                        className="product-variants-edit-select"
-                        aria-label="Color"
-                      >
-                        {colors.map((color) => (
-                          <option key={color._id} value={color._id}>
-                            {color.color_name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      variant.color_id?.color_name || "N/A"
-                    )}
-                  </td>
-                  <td>
-                    {editingVariantId === variant._id ? (
-                      <select
-                        value={editFormData.size_id}
-                        onChange={(e) =>
-                          handleEditFieldChange("size_id", e.target.value)
-                        }
-                        className="product-variants-edit-select"
-                        aria-label="Size"
-                      >
-                        {sizes.map((size) => (
-                          <option key={size._id} value={size._id}>
-                            {size.size_name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      variant.size_id?.size_name || "N/A"
-                    )}
-                  </td>
-                  <td>
-                    {editingVariantId === variant._id ? (
-                      <select
-                        value={editFormData.image_id}
-                        onChange={(e) =>
-                          handleEditFieldChange("image_id", e.target.value)
-                        }
-                        className="product-variants-edit-select"
-                        aria-label="Image"
-                      >
-                        <option value="">No Image</option>
-                        {images.map((image) => (
-                          <option key={image._id} value={image._id}>
-                            {image.imageURL}
-                          </option>
-                        ))}
-                      </select>
-                    ) : variant.image_id?.imageURL ? (
-                      <img
-                        src={variant.image_id.imageURL}
-                        alt="Product variant"
-                        className="product-variants-image"
-                      />
-                    ) : (
-                      "No Image"
-                    )}
-                  </td>
-                  <td>
-                    {editingVariantId === variant._id ? (
-                      <div className="product-variants-action-buttons">
-                        <button
-                          onClick={handleEditSubmit}
-                          className="product-variants-update-button"
-                          aria-label={`Update variant ${variant._id}`}
-                          disabled={loading}
+              {currentVariants.map((variant, index) => {
+                const discontinued = isVariantDiscontinued(variant);
+                return (
+                  <tr key={variant._id} className={`product-variants-table-row ${discontinued ? 'discontinued-row' : ''}`}>
+                    <td>{startIndex + index + 1}</td>
+                    <td>
+                      {editingVariantId === variant._id ? (
+                        <select
+                          value={editFormData.productId}
+                          onChange={(e) =>
+                            handleEditFieldChange("productId", e.target.value)
+                          }
+                          className="product-variants-edit-select"
+                          aria-label="Product"
                         >
-                          Update
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="product-variants-cancel-button"
-                          aria-label={`Cancel editing variant ${variant._id}`}
-                          disabled={loading}
+                          {products.map((product) => (
+                            <option key={product._id} value={product._id}>
+                              {product.productName}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        variant.productId?.productName || "N/A"
+                      )}
+                    </td>
+                    <td>
+                      {editingVariantId === variant._id ? (
+                        <select
+                          value={editFormData.productColorId}
+                          onChange={(e) =>
+                            handleEditFieldChange("productColorId", e.target.value)
+                          }
+                          className="product-variants-edit-select"
+                          aria-label="Color"
                         >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="product-variants-action-buttons">
-                        <button
-                          onClick={() => handleEditVariant(variant)}
-                          className="product-variants-edit-button"
-                          aria-label={`Edit variant ${variant._id}`}
+                          {colors.map((color) => (
+                            <option key={color._id} value={color._id}>
+                              {color.color_name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        variant.productColorId?.color_name || "N/A"
+                      )}
+                    </td>
+                    <td>
+                      {editingVariantId === variant._id ? (
+                        <select
+                          value={editFormData.productSizeId}
+                          onChange={(e) =>
+                            handleEditFieldChange("productSizeId", e.target.value)
+                          }
+                          className="product-variants-edit-select"
+                          aria-label="Size"
                         >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteVariant(variant._id)}
-                          className="product-variants-delete-button"
-                          aria-label={`Delete variant ${variant._id}`}
+                          {sizes.map((size) => (
+                            <option key={size._id} value={size._id}>
+                              {size.size_name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        variant.productSizeId?.size_name || "N/A"
+                      )}
+                    </td>
+                    <td>
+                      {editingVariantId === variant._id ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editFormData.variantPrice}
+                          onChange={(e) => handleEditFieldChange("variantPrice", e.target.value)}
+                          className="product-variants-edit-input"
+                        />
+                      ) : (
+                        formatPrice(variant.variantPrice)
+                      )}
+                    </td>
+                    <td>
+                      {editingVariantId === variant._id ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={editFormData.stockQuantity}
+                          onChange={(e) => handleEditFieldChange("stockQuantity", e.target.value)}
+                          className="product-variants-edit-input"
+                        />
+                      ) : (
+                        variant.stockQuantity || 0
+                      )}
+                    </td>
+                    <td>
+                      {editingVariantId === variant._id ? (
+                        <div className="product-variants-edit-image">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleEditVariantImageChange}
+                            className="product-variants-file-input"
+                            style={{ display: 'none' }}
+                            id={`edit-variant-image-${variant._id}`}
+                          />
+                          <button
+                            type="button"
+                            className="product-variants-change-image-button"
+                            onClick={() => document.getElementById(`edit-variant-image-${variant._id}`).click()}
+                          >
+                            Change Image
+                          </button>
+                          {editVariantImagePreview ? (
+                            <img
+                              src={editVariantImagePreview}
+                              alt="New variant"
+                              className="variant-image"
+                            />
+                          ) : editFormData.variantImage ? (
+                            <img
+                              src={editFormData.variantImage}
+                              alt="Current variant"
+                              className="variant-image"
+                            />
+                          ) : 'N/A'}
+                        </div>
+                      ) : variant.variantImage ? (
+                        <img
+                          src={variant.variantImage}
+                          alt="Product variant"
+                          className="variant-image"
+                        />
+                      ) : (
+                        "N/A"
+                      )}
+                    </td>
+                    <td>
+                      {editingVariantId === variant._id ? (
+                        <select
+                          value={editFormData.variantStatus}
+                          onChange={(e) => handleEditFieldChange("variantStatus", e.target.value)}
+                          className="product-variants-edit-select"
                         >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                          <option value="active">active</option>
+                          <option value="inactive">inactive</option>
+                        </select>
+                      ) : (
+                        <span className={getStatusBadgeClass(variant.variantStatus)}>
+                          {discontinued ? 'Deleted' : variant.variantStatus || 'N/A'}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {editingVariantId === variant._id ? (
+                        <div className="product-variants-action-buttons">
+                          <button
+                            onClick={handleEditSubmit}
+                            className="product-variants-update-button"
+                            aria-label={`Update variant ${variant._id}`}
+                            disabled={loading}
+                          >
+                            Update
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="product-variants-cancel-button"
+                            aria-label={`Cancel editing variant ${variant._id}`}
+                            disabled={loading}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="product-variants-action-buttons">
+                          <button
+                            onClick={() => handleEditVariant(variant)}
+                            className="product-variants-edit-button"
+                            aria-label={`Edit variant ${variant._id}`}
+                            disabled={discontinued}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => deleteVariant(variant._id)}
+                            className="product-variants-delete-button"
+                            aria-label={`Delete variant ${variant._id}`}
+                            disabled={discontinued}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
