@@ -300,7 +300,7 @@ const Accounts = () => {
       phone: account.phone || '',
       address: account.address || '',
       gender: account.gender || '',
-      dob: account.dob || '',
+      dob: account.dob ? new Date(account.dob).toISOString().split('T')[0] : '',
       role: account.role || 'user',
       acc_status: account.acc_status || 'active',
     });
