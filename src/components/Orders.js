@@ -401,122 +401,100 @@ const Orders = () => {
     }
   }, [selectedOrderId, fetchOrderDetails]);
 
-  // Update order statuses
-  const updateOrder = useCallback(async (orderId, updatedData) => {
-    setLoading(true);
-    setError("");
-    setToast(null);
+// Update order statuses
+const updateOrder = useCallback(async (orderId, updatedData) => {
+  setLoading(true);
+  setError("");
+  setToast(null);
 
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No authentication token found");
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("No authentication token found");
 
-      // Find the original order
-      const originalOrder = orders.find(o => o._id === orderId);
-      if (!originalOrder) throw new Error("Order not found");
+    // Find the original order
+    const originalOrder = orders.find(o => o._id === orderId);
+    if (!originalOrder) throw new Error("Order not found");
 
-      // Helper to build changed fields
-      const buildChangedFields = (refundProofUrl) => {
-        const changedFields = {};
-        ["order_status", "pay_status", "shipping_status", "refund_status"].forEach(key => {
-          const oldVal = originalOrder[key] ?? "";
-          const newVal = updatedData[key] ?? "";
-          if (oldVal !== newVal) {
-            changedFields[key] = newVal;
-          }
-        });
-
-        if (refundProofFile) {
-          setUploadingRefundProof(true);
-          const formData = new FormData();
-          formData.append("image", refundProofFile);
-          const uploadResult = await axios.post(
-            `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/upload`,
-            formData,
-            { headers: { "Content-Type": "multipart/form-data" } }
-          );
-          setUploadingRefundProof(false);
-          setLoading(false);
-          return;
+    // Helper to build changed fields
+    const buildChangedFields = (refundProofUrl) => {
+      const changedFields = {};
+      ["order_status", "pay_status", "shipping_status", "refund_status"].forEach(key => {
+        const oldVal = originalOrder[key] ?? "";
+        const newVal = updatedData[key] ?? "";
+        if (oldVal !== newVal) {
+          changedFields[key] = newVal;
         }
-        setUploadingRefundProof(false);
-        if (uploadResult.data && uploadResult.data.url) {
-          // Sau khi upload thành công, gọi update với refundProofUrl
-          const refundProofUrl = uploadResult.data.url;
-          const changedFields = buildChangedFields(refundProofUrl);
-          if (Object.keys(changedFields).length === 0) {
-            setToast({ type: "info", message: "No changes detected. Nothing to update." });
-            setEditingOrderId(null);
-            setEditFormData({
-              order_status: "",
-              pay_status: "",
-              shipping_status: "",
-            });
-            setLoading(false);
-            return;
-          }
-          const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setOrders((prev) =>
-            prev.map((order) =>
-              order._id === orderId ? { ...order, ...response.data } : order
-            )
-          );
-          setToast({ type: "success", message: "Order updated successfully" });
-          setEditingOrderId(null);
-          setEditFormData({
-            order_status: "",
-            pay_status: "",
-            shipping_status: "",
-          });
-        } else {
-          setToast({ type: "error", message: "Upload refund proof thất bại!" });
-          setLoading(false);
-          return;
-        }
-      } else {
-        // Không có file mới, chỉ update các trường khác
-        const refundProofUrl = updatedData.refund_proof;
-        const changedFields = buildChangedFields(refundProofUrl);
-        if (Object.keys(changedFields).length === 0) {
-          setToast({ type: "info", message: "No changes detected. Nothing to update." });
-          setEditingOrderId(null);
-          setEditFormData({
-            order_status: "",
-            pay_status: "",
-            shipping_status: "",
-          });
-          setLoading(false);
-          return;
-        }
-        const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setOrders((prev) =>
-          prev.map((order) =>
-            order._id === orderId ? { ...order, ...response.data } : order
-          )
-        );
-        setToast({ type: "success", message: "Order updated successfully" });
-        setEditingOrderId(null);
-        setEditFormData({
-          order_status: "",
-          pay_status: "",
-          shipping_status: "",
-        });
-      }
-    } catch (err) {
-      setError(err.message || "Failed to update order");
-      setToast({
-        type: "error",
-        message: err.message || "Failed to update order",
       });
-      console.error("Update order error:", err);
-    } finally {
-      setLoading(false);
+      if (refundProofUrl) {
+        changedFields["refund_proof"] = refundProofUrl;
+      }
+      return changedFields;
+    };
+
+    let refundProofUrl = updatedData.refund_proof;
+
+    if (refundProofFile) {
+      setUploadingRefundProof(true);
+      const formData = new FormData();
+      formData.append("image", refundProofFile);
+      const uploadResult = await axios.post(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/upload`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      setUploadingRefundProof(false);
+
+      if (uploadResult.data && uploadResult.data.url) {
+        refundProofUrl = uploadResult.data.url;
+      } else {
+        setToast({ type: "error", message: "Upload refund proof thất bại!" });
+        setLoading(false);
+        return;
+      }
     }
-  }, [orders, refundProofFile]);
+
+    const changedFields = buildChangedFields(refundProofUrl);
+
+    if (Object.keys(changedFields).length === 0) {
+      setToast({ type: "info", message: "No changes detected. Nothing to update." });
+      setEditingOrderId(null);
+      setEditFormData({
+        order_status: "",
+        pay_status: "",
+        shipping_status: "",
+      });
+      setLoading(false);
+      return;
+    }
+
+    const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setOrders((prev) =>
+      prev.map((order) =>
+        order._id === orderId ? { ...order, ...response.data } : order
+      )
+    );
+
+    setToast({ type: "success", message: "Order updated successfully" });
+    setEditingOrderId(null);
+    setEditFormData({
+      order_status: "",
+      pay_status: "",
+      shipping_status: "",
+    });
+  } catch (err) {
+    setError(err.message || "Failed to update order");
+    setToast({
+      type: "error",
+      message: err.message || "Failed to update order",
+    });
+    console.error("Update order error:", err);
+  } finally {
+    setLoading(false);
+  }
+}, [orders, refundProofFile]);
 
   // Format price
   const formatPrice = useCallback((price) => {
