@@ -104,8 +104,35 @@ const Layout = ({ children }) => {
     setIsSidebarOpen((prev) => !prev);
   }, []);
 
-  // Dropdown items
-  const dropdownItems = useMemo(
+  // Sidebar items with LineIcons
+  const sidebarItems = useMemo(
+    () => {
+      const items = [
+        { label: 'Cart', to: '/carts', icon: Unicons.UilShoppingCart },
+        { label: 'Category', to: '/categories', icon: Unicons.UilListUl },
+        { label: 'Order', to: '/orders', icon: Unicons.UilShoppingBag },
+        { label: 'Feedback', to: '/feedbacks', icon: Unicons.UilCommentDots },
+        { label: 'Product', to: '/products', icon: Unicons.UilBox },
+        { label: 'Product Specification', to: '/specifications', icon: Unicons.UilFileInfoAlt },
+        { label: 'Product Variant', to: '/variants', icon: Unicons.UilLayerGroup },
+        { label: 'Import Bills', to: '/imports', icon: Unicons.UilFileImport },
+        { label: 'Voucher', to: '/vouchers', icon: Unicons.UilTagAlt },
+        { label: 'Notifications', to: '/notifications', icon: Unicons.UilBell },
+        { label: 'Chat', to: '/chat', icon: Unicons.UilChat },
+      ];
+      if (user?.role === 'admin') {
+        items.unshift(
+          { label: 'Account', to: '/accounts', icon: Unicons.UilUsersAlt },
+          { label: 'Statistics', to: '/statistics', icon: Unicons.UilChart }
+        );
+      }
+      return items;
+    },
+    [user]
+  );
+
+  // Account sublist items
+  const accountItems = useMemo(
     () => [
       { label: 'My Account', to: '/profile' },
       { label: 'Sign Out', action: handleLogout, className: 'logout-item' },
