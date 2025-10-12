@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 
-// Import all existing components
+// ==== Import các component hiện có ====
 import Products from "./components/Products";
 import ProductVariants from "./components/ProductVariants";
 import Login from "./components/Login";
@@ -24,13 +24,14 @@ import Statistics from "./components/Statistics";
 import Layout from "./components/Layout";
 import Vouchers from "./components/Vouchers";
 
-// Import new Forgot Password components
+// ==== Import Forgot Password, OTP, Reset Password ====
 import ForgotPassword from "./components/ForgotPassword";
 import OTPVerification from "./components/OTPVerification";
 import ResetPassword from "./components/ResetPassword";
 
-// ✅ Import thêm chat component
+// ✅ Import thêm Chat và Notifications
 import AdminChat from "./components/AdminChat";
+import Notifications from "./components/Notifications";
 
 // ===============================
 // 🔒 ProtectedRoute (chặn người không có quyền)
@@ -40,7 +41,7 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
 
   if (isAuthLoading) {
-    return null; // hoặc spinner
+    return null; // hoặc spinner loading
   }
 
   if (!user || !["admin", "manager"].includes(user.role)) {
@@ -59,13 +60,13 @@ const App = () => {
       <AuthProvider>
         <Layout>
           <Routes>
-            {/* Public routes */}
+            {/* ==== Public routes ==== */}
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/otp-verification" element={<OTPVerification />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* === Protected Routes === */}
+            {/* ==== Protected Routes ==== */}
             <Route
               path="/"
               element={
@@ -169,6 +170,16 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <Vouchers />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ✅ Notifications */}
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
                 </ProtectedRoute>
               }
             />
