@@ -1,4 +1,5 @@
 import RefundProofModal from "./RefundProofModal";
+
 import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
@@ -17,18 +18,12 @@ function formatDateVN(dateStr) {
   return `${day}/${month}/${year}`;
 }
 
-// Format price to VND
-function formatPrice(price) {
-  if (typeof price !== 'number' || isNaN(price)) return 'N/A';
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-  }).format(price);
-}
-
 // Helper to determine which order status options should be enabled for update
 const getOrderStatusOptionDisabled = (currentStatus, optionValue) => {
-  if (currentStatus === "cancelled" || currentStatus === "delivered") return true;
+  // Only allow valid transitions
+  // If cancelled or delivered, disable all options
+  if (currentStatus === "cancelled" || currentStatus === "delivered")
+    return true;
 
   let allowedStatuses = [];
   if (currentStatus === "pending") {
@@ -39,8 +34,12 @@ const getOrderStatusOptionDisabled = (currentStatus, optionValue) => {
     allowedStatuses = ["delivered"];
   }
 
+  // Disable 'cancelled' unless currentStatus is 'pending'
   if (optionValue === "cancelled" && currentStatus !== "pending") return true;
+
+  // Always allow current status to be selected
   if (optionValue === currentStatus) return false;
+  // Disable if not in allowedStatuses
   return !allowedStatuses.includes(optionValue);
 };
 
@@ -82,28 +81,33 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
 };
 
 const Orders = () => {
+  // State cho modal ảnh refund proof
   const [showRefundProofModal, setShowRefundProofModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState("");
+  // State cho upload refund proof
   const [refundProofFile, setRefundProofFile] = useState(null);
   const [refundProofPreview, setRefundProofPreview] = useState("");
   const [uploadingRefundProof, setUploadingRefundProof] = useState(false);
-  const [feedbackForm, setFeedbackForm] = useState({
-    orderId: null,
-    variantId: null,
-    content: "",
-    rating: null,
-  });
-  const [editingFeedback, setEditingFeedback] = useState(null);
-
+  // Chỉ preview khi chọn file, chưa upload
   const handleRefundProofChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setRefundProofFile(file);
     setRefundProofPreview(URL.createObjectURL(file));
   };
-
   const { user, isAuthLoading } = useContext(AuthContext);
   const [orders, setOrders] = useState([]);
+  // So sánh dữ liệu chỉnh sửa với dữ liệu gốc
+  const isOrderDataChanged = (order) => {
+    // Compare all editable fields, treat undefined and empty string as equal
+    const fields = ["order_status", "pay_status", "shipping_status", "refund_status"];
+    for (let key of fields) {
+      const oldVal = order[key] ?? "";
+      const newVal = editFormData[key] ?? "";
+      if (oldVal !== newVal) return true;
+    }
+    return false;
+  };
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [orderDetails, setOrderDetails] = useState([]);
@@ -111,39 +115,34 @@ const Orders = () => {
   const [editFormData, setEditFormData] = useState({
     order_status: "",
     pay_status: "",
-    refund_status: "",
-    refund_proof: "",
+    shipping_status: "",
+    refund_proof: ""
   });
 
-  const isOrderDataChanged = (order) => {
-    const fields = ["order_status", "pay_status", "refund_status", "refund_proof"];
-    for (let key of fields) {
-      const oldVal = order[key] ?? "";
-      const newVal = editFormData[key] ?? "";
-      if (key === "refund_proof" && refundProofFile) return true;
-      if (oldVal !== newVal) return true;
-    }
-    return false;
-  };
-
+  // Filter states
   const [filters, setFilters] = useState({
     dateFrom: "",
     dateTo: "",
     orderStatus: "",
     payStatus: "",
+    shippingStatus: "",
     minPrice: "",
     maxPrice: "",
   });
   const [searchText, setSearchText] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+
+  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(20);
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
   const socketRef = useRef(null);
 
+  // Order status options
   const orderStatusOptions = [
     { value: "pending", label: "Pending" },
     { value: "confirmed", label: "Confirmed" },
@@ -152,17 +151,20 @@ const Orders = () => {
     { value: "cancelled", label: "Cancelled" },
   ];
 
+  // Payment status options
   const payStatusOptions = [
     { value: "unpaid", label: "Unpaid" },
     { value: "paid", label: "Paid" },
   ];
 
+  // Refund status options
   const refundStatusOptions = [
     { value: "not_applicable", label: "Not Applicable" },
     { value: "pending_refund", label: "Pending Refund" },
-    { value: "refunded", label: "Refunded" },
+    { value: "refunded", label: "Refuned" },
   ];
 
+  // Helper: Hiển thị đẹp và viết hoa chữ cái đầu cho các trạng thái
   const displayStatus = (str) => {
     if (!str || typeof str !== "string") return str || "N/A";
     if (str === "not_applicable") return "Not Applicable";
@@ -171,6 +173,7 @@ const Orders = () => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
+  // Disable Update button for specific cases
   const shouldDisableUpdate = (method, status, pay, refund) => {
     return (
       (method === "COD" &&
@@ -189,28 +192,35 @@ const Orders = () => {
         status === "cancelled" &&
         pay === "paid" &&
         refund === "refunded")
+      // Trường hợp Cancelled, VNPAY, Paid vẫn cho update nên loại bỏ trường hợp này khỏi disable
     );
   };
 
+  // Check if any filters are active
   const hasActiveFilters = useCallback(() => {
     return (
       filters.dateFrom ||
       filters.dateTo ||
       filters.orderStatus ||
       filters.payStatus ||
+      filters.shippingStatus ||
       filters.minPrice ||
       filters.maxPrice ||
-      searchText
+      filters.searchQuery
     );
-  }, [filters, searchText]);
+  }, [filters]);
 
+  // Auto-dismiss toast
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [toast]);
 
+  // Fetch orders with filters (server-side filtering)
   const fetchOrders = useCallback(async () => {
     if (!user?._id) {
       setError("User not authenticated");
@@ -221,363 +231,113 @@ const Orders = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No authentication token found");
+      // Build query params
       const params = {};
       if (filters.dateFrom) params.dateFrom = filters.dateFrom;
       if (filters.dateTo) params.dateTo = filters.dateTo;
       if (filters.orderStatus) params.order_status = filters.orderStatus;
       if (filters.payStatus) params.pay_status = filters.payStatus;
+      if (filters.shippingStatus)
+        params.shipping_status = filters.shippingStatus;
       if (filters.minPrice) params.minPrice = filters.minPrice;
       if (filters.maxPrice) params.maxPrice = filters.maxPrice;
-      if (searchText) params.q = searchText;
-      if (user.role === "admin" || user.role === "manager") {
-        if (filters.accId) params.acc_id = filters.accId;
-      }
+      // Only admin/manager can filter by acc_id
+      if ((user.role === "admin" || user.role === "manager") && filters.accId)
+        params.acc_id = filters.accId;
       const queryString = new URLSearchParams(params).toString();
       const url = `/orders/search${queryString ? `?${queryString}` : ""}`;
       const response = await fetchWithRetry(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("Orders Response:", response);
+      // console.log("Orders API response:", response);
       setOrders(
         Array.isArray(response)
           ? response.sort(
-              (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
-            )
+            (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
+          )
           : []
       );
     } catch (err) {
       setError(err.message || "Failed to load orders");
-      console.error("Fetch Orders Error:", err);
     } finally {
       setLoading(false);
     }
-  }, [user, filters, searchText]);
+  }, [user, filters]);
 
+  // Search handler FE: lọc orders theo name, addressReceive, phone
+  // Search realtime: lọc khi nhập
   useEffect(() => {
-    setFilteredOrders(orders);
+    if (!orders || !Array.isArray(orders)) return;
+    const keyword = searchText.trim().toLowerCase();
+    if (!keyword) {
+      setFilteredOrders(orders);
+      return;
+    }
+    const filtered = orders.filter(order => {
+      const name = (order.acc_id?.name || "").toLowerCase();
+      const address = (order.addressReceive || "").toLowerCase();
+      const phone = (order.phone || order.acc_id?.phone || "").toLowerCase();
+      return (
+        name.includes(keyword) ||
+        address.includes(keyword) ||
+        phone.includes(keyword)
+      );
+    });
+    setFilteredOrders(filtered);
+  }, [orders, searchText]);
+
+  // Update filtered orders when orders change (pagination only)
+  useEffect(() => {
+    const sortedOrders = Array.isArray(orders)
+      ? [...orders].sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+      : [];
+    setFilteredOrders(sortedOrders);
   }, [orders]);
 
-  const fetchOrderDetails = useCallback(async () => {
-    if (!selectedOrderId || !user?._id) return;
-    setLoading(true);
-    setError("");
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No authentication token found");
-      const response = await fetchWithRetry(
-        `/order-details/get-all-order-details/${selectedOrderId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      console.log("Order Details Response:", response);
-      setOrderDetails(Array.isArray(response) ? response : []);
-    } catch (err) {
-      console.error("Fetch Order Details Error:", err);
-      setError(err.message || "Failed to load order details");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedOrderId, user]);
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredOrders.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const currentOrders = filteredOrders.slice(startIndex, endIndex);
 
-  useEffect(() => {
-    if (selectedOrderId) {
-      fetchOrderDetails();
-    }
-  }, [selectedOrderId, fetchOrderDetails]);
-
-  const addFeedback = useCallback(async () => {
-    if (!feedbackForm.orderId || !feedbackForm.variantId) return;
-    if (!feedbackForm.content || feedbackForm.content.length > 500) {
-      setToast({
-        type: "error",
-        message: "Feedback content must be non-empty and less than 500 characters",
-      });
-      return;
-    }
-    if (!feedbackForm.rating || feedbackForm.rating < 1 || feedbackForm.rating > 5) {
-      setToast({ type: "error", message: "Rating must be between 1 and 5" });
-      return;
-    }
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      await apiClient.patch(
-        `/orders/${feedbackForm.orderId}/add-feedback/${feedbackForm.variantId}`,
-        {
-          feedback: {
-            content: feedbackForm.content,
-            rating: feedbackForm.rating,
-          },
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setToast({ type: "success", message: "Feedback added successfully" });
-      setFeedbackForm({ orderId: null, variantId: null, content: "", rating: null });
-      fetchOrderDetails();
-    } catch (err) {
-      setToast({ type: "error", message: err.message || "Failed to add feedback" });
-    } finally {
-      setLoading(false);
-    }
-  }, [feedbackForm, fetchOrderDetails]);
-
-  const editFeedback = useCallback(async () => {
-    if (!editingFeedback?.orderId || !editingFeedback?.variantId) return;
-    if (!feedbackForm.content || feedbackForm.content.length > 500) {
-      setToast({
-        type: "error",
-        message: "Feedback content must be non-empty and less than 500 characters",
-      });
-      return;
-    }
-    if (!feedbackForm.rating || feedbackForm.rating < 1 || feedbackForm.rating > 5) {
-      setToast({ type: "error", message: "Rating must be between 1 and 5" });
-      return;
-    }
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      await apiClient.put(
-        `/orders/${editingFeedback.orderId}/edit-feedback/${editingFeedback.variantId}`,
-        {
-          feedback: {
-            content: feedbackForm.content,
-            rating: feedbackForm.rating,
-          },
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setToast({ type: "success", message: "Feedback updated successfully" });
-      setEditingFeedback(null);
-      setFeedbackForm({ orderId: null, variantId: null, content: "", rating: null });
-      fetchOrderDetails();
-    } catch (err) {
-      setToast({ type: "error", message: err.message || "Failed to update feedback" });
-    } finally {
-      setLoading(false);
-    }
-  }, [editingFeedback, feedbackForm, fetchOrderDetails]);
-
-  const deleteFeedback = useCallback(
-    async (orderId, variantId) => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem("token");
-        await apiClient.delete(
-          `/orders/${orderId}/delete-feedback/${variantId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setToast({ type: "success", message: "Feedback deleted successfully" });
-        fetchOrderDetails();
-      } catch (err) {
-        setToast({
-          type: "error",
-          message: err.message || "Failed to delete feedback",
-        });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [fetchOrderDetails]
-  );
-
-  const updateOrder = useCallback(
-    async (orderId, updatedData) => {
-      setLoading(true);
-      setError("");
-      setToast(null);
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("No authentication token found");
-        const originalOrder = orders.find((o) => o._id === orderId);
-        if (!originalOrder) throw new Error("Order not found");
-
-        const changedFields = {};
-        ["order_status", "pay_status", "refund_status"].forEach((key) => {
-          const oldVal = originalOrder[key] ?? "";
-          const newVal = updatedData[key] ?? "";
-          if (oldVal !== newVal) changedFields[key] = newVal;
-        });
-
-        if (refundProofFile) {
-          setUploadingRefundProof(true);
-          const formData = new FormData();
-          formData.append("image", refundProofFile);
-          const uploadResult = await axios.post(
-            `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/upload`,
-            formData,
-            { headers: { "Content-Type": "multipart/form-data" } }
-          );
-          setUploadingRefundProof(false);
-          if (uploadResult.data?.url) {
-            changedFields.refund_proof = uploadResult.data.url;
-          } else {
-            throw new Error("Failed to upload refund proof");
-          }
-        }
-
-        if (Object.keys(changedFields).length === 0) {
-          setToast({ type: "info", message: "No changes detected" });
-          setEditingOrderId(null);
-          setEditFormData({
-            order_status: "",
-            pay_status: "",
-            refund_status: "",
-            refund_proof: "",
-          });
-          return;
-        }
-
-        const newStatus = changedFields.order_status || originalOrder.order_status;
-        const newPayStatus = changedFields.pay_status || originalOrder.pay_status;
-        const newRefundStatus =
-          changedFields.refund_status || originalOrder.refund_status;
-
-        if (newStatus === "delivered" && newPayStatus !== "paid") {
-          setToast({
-            type: "error",
-            message: "Delivered orders must have pay_status = paid",
-          });
-          return;
-        }
-
-        if (originalOrder.payment_method === "COD") {
-          if (
-            ["pending", "confirmed", "shipping"].includes(newStatus) &&
-            newPayStatus === "paid"
-          ) {
-            setToast({
-              type: "error",
-              message: "COD orders cannot be paid before delivery",
-            });
-            return;
-          }
-        }
-
-        if (originalOrder.payment_method === "VNPAY") {
-          if (newStatus !== "cancelled" && newPayStatus !== "paid") {
-            setToast({
-              type: "error",
-              message: "VNPAY orders must remain paid unless cancelled",
-            });
-            return;
-          }
-          if (newStatus === "cancelled" && newPayStatus === "paid") {
-            if (!["pending_refund", "refunded"].includes(newRefundStatus)) {
-              setToast({
-                type: "error",
-                message:
-                  "Cancelled paid VNPAY orders must have refund_status = pending_refund or refunded",
-              });
-              return;
-            }
-            if (
-              newRefundStatus === "refunded" &&
-              !changedFields.refund_proof &&
-              !originalOrder.refund_proof
-            ) {
-              setToast({
-                type: "error",
-                message: "Refunded status requires a refund proof",
-              });
-              return;
-            }
-          }
-          if (
-            originalOrder.refund_status === "pending_refund" &&
-            Object.keys(changedFields).some(
-              (key) => !["refund_status", "refund_proof"].includes(key)
-            )
-          ) {
-            setToast({
-              type: "error",
-              message:
-                "When in pending_refund, only refund_status and refund_proof can be updated",
-            });
-            return;
-          }
-        }
-
-        const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setOrders((prev) =>
-          prev.map((order) =>
-            order._id === orderId ? { ...order, ...response.data } : order
-          )
-        );
-        setEditingOrderId(null);
-        setEditFormData({
-          order_status: "",
-          pay_status: "",
-          refund_status: "",
-          refund_proof: "",
-        });
-        setRefundProofFile(null);
-        setRefundProofPreview("");
-        setToast({ type: "success", message: "Order updated successfully!" });
-      } catch (err) {
-        setToast({ type: "error", message: err.message || "Failed to update order" });
-      } finally {
-        setLoading(false);
-        setUploadingRefundProof(false);
-      }
-    },
-    [orders, refundProofFile, user]
-  );
-
-  const cancelOrder = useCallback(
-    async (orderId) => {
-      setLoading(true);
-      setError("");
-      setToast(null);
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("No authentication token found");
-        await apiClient.patch(
-          `/orders/${orderId}/cancel`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setToast({ type: "success", message: "Order cancelled successfully" });
-        fetchOrders();
-      } catch (err) {
-        setToast({
-          type: "error",
-          message: err.message || "Failed to cancel order",
-        });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [fetchOrders]
-  );
-
-  const handleFilterChange = useCallback((field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-    setCurrentPage(1);
+  // Handle page change
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
   }, []);
 
+  // Handle previous/next page
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  }, []);
+  const handleNextPage = useCallback(() => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
+
+  // Handle filter changes
+  const handleFilterChange = useCallback((field, value) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Clear all filters
   const clearFilters = useCallback(() => {
     setFilters({
       dateFrom: "",
       dateTo: "",
       orderStatus: "",
       payStatus: "",
+      shippingStatus: "",
       minPrice: "",
       maxPrice: "",
+      searchQuery: "",
     });
-    setSearchText("");
-    setCurrentPage(1);
   }, []);
 
+  // Toggle filter visibility
   const toggleFilters = useCallback(() => {
     setShowFilters((prev) => !prev);
   }, []);
 
+  // Handle authentication state
   useEffect(() => {
     if (isAuthLoading) return;
     if (!user && !localStorage.getItem("token")) {
@@ -587,6 +347,7 @@ const Orders = () => {
     }
   }, [user, isAuthLoading, navigate, fetchOrders]);
 
+  // Real-time order status updates
   useEffect(() => {
     if (!user?._id) return;
     if (!socketRef.current) {
@@ -599,220 +360,393 @@ const Orders = () => {
       );
     }
     const socket = socketRef.current;
-    socket.on("orderUpdated", () => fetchOrders());
+    // Listen for order updates (any order change)
+    const handleOrderUpdated = (data) => {
+      // Optionally, filter by userId if you only want to update for certain users
+      fetchOrders();
+    };
+    socket.on("orderUpdated", handleOrderUpdated);
     return () => {
-      socket.off("orderUpdated");
+      socket.off("orderUpdated", handleOrderUpdated);
+      // Optionally disconnect socket on unmount
+      // socket.disconnect();
     };
   }, [user, fetchOrders]);
 
-  const totalPages = Math.ceil(filteredOrders.length / rowsPerPage);
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = startIndex + rowsPerPage;
-  const currentOrders = filteredOrders.slice(startIndex, endIndex);
+  // Fetch order details when selectedOrderId changes
+  const fetchOrderDetails = useCallback(async () => {
+    if (!selectedOrderId || !user?._id) return;
+    setLoading(true);
+    setError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No authentication token found");
+      const response = await fetchWithRetry(
+        `/order-details?order_id=${selectedOrderId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setOrderDetails(Array.isArray(response) ? response : []);
+    } catch (err) {
+      setError(err.message || "Failed to load order details");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedOrderId, user]);
 
-  const handlePageChange = useCallback((page) => {
-    setCurrentPage(page);
+  useEffect(() => {
+    if (selectedOrderId) {
+      fetchOrderDetails();
+    }
+  }, [selectedOrderId, fetchOrderDetails]);
+
+// Update order statuses
+const updateOrder = useCallback(async (orderId, updatedData) => {
+  setLoading(true);
+  setError("");
+  setToast(null);
+
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("No authentication token found");
+
+    // Find the original order
+    const originalOrder = orders.find(o => o._id === orderId);
+    if (!originalOrder) throw new Error("Order not found");
+
+    // Helper to build changed fields
+    const buildChangedFields = (refundProofUrl) => {
+      const changedFields = {};
+      ["order_status", "pay_status", "shipping_status", "refund_status"].forEach(key => {
+        const oldVal = originalOrder[key] ?? "";
+        const newVal = updatedData[key] ?? "";
+        if (oldVal !== newVal) {
+          changedFields[key] = newVal;
+        }
+      });
+      if (refundProofUrl) {
+        changedFields["refund_proof"] = refundProofUrl;
+      }
+      return changedFields;
+    };
+
+    let refundProofUrl = updatedData.refund_proof;
+
+    if (refundProofFile) {
+      setUploadingRefundProof(true);
+      const formData = new FormData();
+      formData.append("image", refundProofFile);
+      const uploadResult = await axios.post(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/upload`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      setUploadingRefundProof(false);
+
+      if (uploadResult.data && uploadResult.data.url) {
+        refundProofUrl = uploadResult.data.url;
+      } else {
+        setToast({ type: "error", message: "Upload refund proof thất bại!" });
+        setLoading(false);
+        return;
+      }
+    }
+
+    const changedFields = buildChangedFields(refundProofUrl);
+
+    if (Object.keys(changedFields).length === 0) {
+      setToast({ type: "info", message: "No changes detected. Nothing to update." });
+      setEditingOrderId(null);
+      setEditFormData({
+        order_status: "",
+        pay_status: "",
+        shipping_status: "",
+      });
+      setLoading(false);
+      return;
+    }
+
+    const response = await apiClient.put(`/orders/${orderId}`, changedFields, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setOrders((prev) =>
+      prev.map((order) =>
+        order._id === orderId ? { ...order, ...response.data } : order
+      )
+    );
+
+    setToast({ type: "success", message: "Order updated successfully" });
+    setEditingOrderId(null);
+    setEditFormData({
+      order_status: "",
+      pay_status: "",
+      shipping_status: "",
+    });
+  } catch (err) {
+    setError(err.message || "Failed to update order");
+    setToast({
+      type: "error",
+      message: err.message || "Failed to update order",
+    });
+    console.error("Update order error:", err);
+  } finally {
+    setLoading(false);
+  }
+}, [orders, refundProofFile]);
+
+  // Format price
+  const formatPrice = useCallback((price) => {
+    if (typeof price !== "number" || isNaN(price)) return "N/A";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
   }, []);
 
-  const handlePreviousPage = useCallback(() => {
-    setCurrentPage((prev) => Math.max(prev - 1, 1));
-  }, []);
-
-  const handleNextPage = useCallback(() => {
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-  }, [totalPages]);
-
-  const handleEditChange = useCallback((field, value) => {
-    setEditFormData((prev) => ({ ...prev, [field]: value }));
-  }, []);
-
-  const handleFeedbackChange = useCallback((field, value) => {
-    setFeedbackForm((prev) => ({ ...prev, [field]: value }));
-  }, []);
+  // Show loading state while auth is being verified
+  if (isAuthLoading) {
+    return (
+      <div className="orders-container">
+        <div className="orders-loading" role="status" aria-live="polite">
+          <div className="orders-loading-spinner"></div>
+          <p>Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="orders-container">
+      {/* Toast Notification */}
       {toast && (
-        <div className={`orders-toast orders-toast-${toast.type}`}>
+        <div
+          className={`orders-toast ${toast.type === "success"
+            ? "orders-toast-success"
+            : "orders-toast-error"
+            }`}
+          role="alert"
+        >
           {toast.message}
         </div>
       )}
-      {error && (
-        <div className="orders-error">
-          <span className="orders-error-icon">⚠️</span>
-          {error}
-          <button
-            onClick={fetchOrders}
-            className="orders-retry-button"
-            disabled={loading}
-          >
-            Retry
-          </button>
-        </div>
-      )}
-      {loading && (
-        <div className="orders-loading">
-          <div className="orders-loading-spinner"></div>
-          Loading orders...
-        </div>
-      )}
-      {!loading && !error && filteredOrders.length === 0 && (
-        <div className="orders-empty">
-          <p>No orders found.</p>
-          <button
-            onClick={() => navigate("/")}
-            className="orders-continue-shopping-button"
-          >
-            Continue Shopping
-          </button>
-        </div>
-      )}
-      {!loading && filteredOrders.length > 0 && (
-        <div className="orders-header">
-          <h1 className="orders-title">Orders</h1>
-          <div className="orders-header-actions">
-            <input
-              type="text"
-              value={searchText}
-              onChange={(e) => {
-                setSearchText(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search by name, address, phone, or product"
-              className="orders-filter-input"
-              aria-label="Search orders"
-            />
-            <button
-              onClick={toggleFilters}
-              className="orders-filter-toggle"
-              aria-label="Toggle filters"
-            >
-              {showFilters ? "Hide Filters" : "Show Filters"}
-            </button>
-          </div>
-        </div>
-      )}
+
+      <div className="orders-header">
+        <h1 className="orders-title">Admin Order Management</h1>
+        {/* Di chuyển nút filter xuống dưới search */}
+        <div style={{ marginBottom: 16 }}></div>
+      </div>
+
+      {/* Search Section */}
+      <div className="orders-search-bar" style={{ marginBottom: 16 }}>
+        <input
+          type="text"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          placeholder="Search by name, phone, address..."
+          className="orders-filter-input"
+          style={{ width: 300 }}
+        />
+      </div>
+
+      {/* Nút filter chuyển xuống dưới search */}
+      <div className="orders-header-actions" style={{ marginBottom: 16 }}>
+        <button
+          className="orders-filter-toggle"
+          onClick={toggleFilters}
+          aria-label="Toggle filters"
+        >
+          {showFilters ? "Hide Filters" : "Show Filters"}
+        </button>
+      </div>
+
+      {/* Filter Section */}
       {showFilters && (
         <div className="orders-filters">
-          <h2 className="orders-search-title">Search Orders</h2>
           <div className="orders-filters-grid">
-            <div className="orders-search-section">
+            <div className="orders-filter-options">
+              {/* Date Range */}
               <div className="orders-filter-group">
-                <label className="orders-filter-label">Date From</label>
+                <label htmlFor="dateFrom" className="orders-filter-label">
+                  Date From
+                </label>
                 <input
                   type="date"
+                  id="dateFrom"
                   value={filters.dateFrom}
-                  onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("dateFrom", e.target.value)
+                  }
                   className="orders-filter-input"
-                  aria-label="Date from"
                 />
               </div>
               <div className="orders-filter-group">
-                <label className="orders-filter-label">Date To</label>
+                <label htmlFor="dateTo" className="orders-filter-label">
+                  Date To
+                </label>
                 <input
                   type="date"
+                  id="dateTo"
                   value={filters.dateTo}
                   onChange={(e) => handleFilterChange("dateTo", e.target.value)}
                   className="orders-filter-input"
-                  aria-label="Date to"
                 />
               </div>
-            </div>
-            <div className="orders-filter-options">
+              {/* Status Filters */}
               <div className="orders-filter-group">
-                <label className="orders-filter-label">Order Status</label>
+                <label htmlFor="orderStatus" className="orders-filter-label">
+                  Order Status
+                </label>
                 <select
+                  id="orderStatus"
                   value={filters.orderStatus}
                   onChange={(e) =>
                     handleFilterChange("orderStatus", e.target.value)
                   }
                   className="orders-filter-select"
-                  aria-label="Order status"
                 >
-                  <option value="">All</option>
-                  {orderStatusOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                  <option value="">All Statuses</option>
+                  {orderStatusOptions.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="orders-filter-group">
-                <label className="orders-filter-label">Payment Status</label>
+                <label htmlFor="payStatus" className="orders-filter-label">
+                  Payment Status
+                </label>
                 <select
+                  id="payStatus"
                   value={filters.payStatus}
-                  onChange={(e) => handleFilterChange("payStatus", e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("payStatus", e.target.value)
+                  }
                   className="orders-filter-select"
-                  aria-label="Payment status"
                 >
-                  <option value="">All</option>
-                  {payStatusOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                  <option value="">All Payment Statuses</option>
+                  {payStatusOptions.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
                     </option>
                   ))}
                 </select>
               </div>
+              {/* Price Range */}
               <div className="orders-filter-group">
-                <label className="orders-filter-label">Min Price</label>
+                <label htmlFor="minPrice" className="orders-filter-label">
+                  Min Price
+                </label>
                 <input
                   type="number"
+                  id="minPrice"
                   value={filters.minPrice}
-                  onChange={(e) => handleFilterChange("minPrice", e.target.value)}
-                  className="orders-filter-input"
-                  placeholder="0"
+                  onChange={(e) =>
+                    handleFilterChange("minPrice", e.target.value)
+                  }
+                  placeholder="0.00"
                   min="0"
-                  aria-label="Minimum price"
+                  step="0.01"
+                  className="orders-filter-input"
                 />
               </div>
               <div className="orders-filter-group">
-                <label className="orders-filter-label">Max Price</label>
+                <label htmlFor="maxPrice" className="orders-filter-label">
+                  Max Price
+                </label>
                 <input
                   type="number"
+                  id="maxPrice"
                   value={filters.maxPrice}
-                  onChange={(e) => handleFilterChange("maxPrice", e.target.value)}
-                  className="orders-filter-input"
-                  placeholder="Any"
+                  onChange={(e) =>
+                    handleFilterChange("maxPrice", e.target.value)
+                  }
+                  placeholder="9999.99"
                   min="0"
-                  aria-label="Maximum price"
+                  step="0.01"
+                  className="orders-filter-input"
                 />
               </div>
             </div>
           </div>
           <div className="orders-filter-actions">
             <button
-              onClick={clearFilters}
               className="orders-clear-filters"
+              onClick={clearFilters}
               disabled={!hasActiveFilters()}
-              aria-label="Clear filters"
+              aria-label="Clear all filters"
             >
               Clear Filters
             </button>
-            <span className="orders-filter-summary">
-              {hasActiveFilters() ? "Filters applied" : "No filters applied"}
-            </span>
+            <div className="orders-filter-summary">
+              Showing {startIndex + 1} to{" "}
+              {Math.min(endIndex, filteredOrders.length)} of{" "}
+              {filteredOrders.length} orders
+            </div>
           </div>
         </div>
       )}
-      {!loading && filteredOrders.length > 0 && (
+
+      {/* Error Display */}
+      {error && (
+        <div className="orders-error" role="alert" aria-live="polite">
+          <span className="orders-error-icon">⚠</span>
+          <span>{error}</span>
+          <button
+            className="orders-retry-button"
+            onClick={fetchOrders}
+            aria-label="Retry loading orders"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="orders-loading" role="status" aria-live="polite">
+          <div className="orders-loading-spinner"></div>
+          <p>Loading orders...</p>
+        </div>
+      )}
+
+      {/* Orders Table */}
+      {!loading && filteredOrders.length === 0 && !error ? (
+        <div className="orders-empty" role="status">
+          <p>
+            {orders.length === 0
+              ? "No orders found."
+              : "No orders match the current filters."}
+          </p>
+          {/* {orders.length === 0 && (
+            <button
+              className="orders-continue-shopping-button"
+              onClick={() => navigate("/")}
+              aria-label="Continue shopping"
+            >
+              Continue Shopping
+            </button>
+          )} */}
+        </div>
+      ) : (
         <div className="orders-table-container">
           <table className="orders-table">
             <thead>
               <tr>
-                <th>Index</th>
+                <th>#</th>
                 <th>Order ID</th>
-                <th>Order Date</th>
-                <th>Customer</th>
+                <th>Name</th>
                 <th>Phone</th>
                 <th>Address</th>
-                <th>Total Price</th>
-                <th>Discount</th>
-                <th>Final Price</th>
+                <th>Order Date</th>
+                <th>Total</th>
                 <th>Order Status</th>
                 <th>Payment Method</th>
                 <th>Payment Status</th>
                 <th>Refund</th>
-                <th>Actions</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -1419,12 +1353,14 @@ const Orders = () => {
           </table>
         </div>
       )}
+
+      {/* Pagination */}
       {filteredOrders.length > 0 && (
         <div className="orders-pagination">
           <div className="orders-pagination-info">
             Showing {startIndex + 1} to{" "}
-            {Math.min(endIndex, filteredOrders.length)} of {filteredOrders.length}{" "}
-            orders
+            {Math.min(endIndex, filteredOrders.length)} of{" "}
+            {filteredOrders.length} orders
           </div>
           <div className="orders-pagination-controls">
             <button
@@ -1436,18 +1372,19 @@ const Orders = () => {
               Previous
             </button>
             <div className="orders-pagination-pages">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  className={`orders-pagination-page ${
-                    currentPage === page ? "active" : ""
-                  }`}
-                  onClick={() => handlePageChange(page)}
-                  aria-label={`Page ${page}`}
-                >
-                  {page}
-                </button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    className={`orders-pagination-page ${currentPage === page ? "active" : ""
+                      }`}
+                    onClick={() => handlePageChange(page)}
+                    aria-label={`Page ${page}`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
             </div>
             <button
               className="orders-pagination-button"

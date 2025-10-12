@@ -91,11 +91,6 @@ const Login = () => {
               aria-invalid={!!error}
             />
           </div>
-          <div className="login-forgot-password">
-            <Link to="/forgot-password" className="login-forgot-password-link">
-              Forgot Password?
-            </Link>
-          </div>
           <button
             type="submit"
             className="sign-in-button"

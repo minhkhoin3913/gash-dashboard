@@ -32,10 +32,12 @@ import ResetPassword from "./components/ResetPassword";
 // ✅ Import thêm Chat và Notifications
 import AdminChat from "./components/AdminChat";
 import Notifications from "./components/Notifications";
+=======
 
-// ===============================
-// 🔒 ProtectedRoute (chặn người không có quyền)
-// ===============================
+import Layout from "./components/Layout";
+
+
+// ProtectedRoute component to restrict access to admin/manager roles
 const ProtectedRoute = ({ children }) => {
   const { user, isAuthLoading } = React.useContext(AuthContext);
   const location = useLocation();
@@ -44,6 +46,7 @@ const ProtectedRoute = ({ children }) => {
     return null; // hoặc spinner loading
   }
 
+  // Check if user is authenticated and has admin or manager role
   if (!user || !["admin", "manager"].includes(user.role)) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
@@ -51,9 +54,6 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// ===============================
-// 🧠 App Component
-// ===============================
 const App = () => {
   return (
     <Router>
@@ -67,6 +67,7 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* ==== Protected Routes ==== */}
+            <Route path="/login" element={<Login />} />
             <Route
               path="/"
               element={
