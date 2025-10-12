@@ -13,6 +13,217 @@
   --transition-fast: 0.2s ease;
 }
 
+/* Deleted account styling */
+.deleted-account {
+  background-color: #fef2f2 !important;
+  opacity: 0.7;
+}
+
+.deleted-account td {
+  color: #991b1b;
+  font-style: italic;
+}
+
+/* Status badges */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.inactive {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.status-badge.suspended {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.deleted {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Role badges */
+.role-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.role-badge.user {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.role-badge.admin {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.role-badge.manager {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+/* No actions text */
+.no-actions {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+/* Edit Modal */
+.edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.edit-modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.edit-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--amazon-border);
+}
+
+.edit-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--amazon-text);
+}
+
+.edit-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--amazon-secondary-text);
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-modal-close:hover {
+  color: var(--amazon-text);
+}
+
+.edit-modal-body {
+  padding: 20px;
+}
+
+.edit-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.edit-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-form-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--amazon-text);
+  margin-bottom: 4px;
+}
+
+.edit-form-input,
+.edit-form-select {
+  padding: 8px 12px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: var(--amazon-text);
+  background-color: white;
+}
+
+.edit-form-input:focus,
+.edit-form-select:focus {
+  outline: none;
+  border-color: var(--amazon-focus);
+  box-shadow: 0 0 0 2px rgba(0, 113, 133, 0.1);
+}
+
+.edit-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px;
+  border-top: 1px solid var(--amazon-border);
+}
+
+.edit-modal-cancel {
+  padding: 8px 16px;
+  border: 1px solid var(--amazon-border);
+  border-radius: 4px;
+  background-color: white;
+  color: var(--amazon-text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.edit-modal-cancel:hover {
+  background-color: var(--amazon-secondary-bg);
+}
+
+.edit-modal-save {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--amazon-primary);
+  color: var(--amazon-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.edit-modal-save:hover:not(:disabled) {
+  background-color: #ddb347;
+}
+
+.edit-modal-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Container */
 .accounts-container {
   max-width: 1200px;
@@ -437,14 +648,17 @@
 .accounts-edit-button,
 .accounts-update-button,
 .accounts-delete-button,
-.accounts-cancel-button {
+.accounts-cancel-button,
+.accounts-disable-button {
   padding: 6px 12px;
   border: 1px solid var(--amazon-border);
   border-radius: 3px;
   cursor: pointer;
   font-size: 0.875rem;
   transition: background-color var(--transition-fast), color var(--transition-fast);
-  width: 5em;
+  width: 70px;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .accounts-edit-button,
@@ -470,10 +684,22 @@
   background-color: #fff5f6;
 }
 
+.accounts-disable-button {
+  background-color: var(--amazon-bg);
+  color: var(--amazon-secondary-text);
+  border-color: var(--amazon-border);
+}
+
+.accounts-disable-button:hover {
+  background-color: var(--amazon-secondary-bg);
+  color: var(--amazon-text);
+}
+
 .accounts-edit-button:focus,
 .accounts-update-button:focus,
 .accounts-delete-button:focus,
-.accounts-cancel-button:focus {
+.accounts-cancel-button:focus,
+.accounts-disable-button:focus {
   outline: 2px solid var(--amazon-focus);
   outline-offset: 2px;
 }
@@ -709,7 +935,8 @@
   .accounts-edit-button,
   .accounts-update-button,
   .accounts-delete-button,
-  .accounts-cancel-button {
+  .accounts-cancel-button,
+  .accounts-disable-button {
     width: 100%;
     text-align: center;
     padding: 8px;
