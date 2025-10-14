@@ -15,6 +15,8 @@ const Profile = () => {
     email: '',
     phone: '',
     address: '',
+    gender: '',
+    dob: '',
     image: '',
     password: '',
     repeatPassword: '',
@@ -40,6 +42,8 @@ const Profile = () => {
         email: response.data.email,
         phone: response.data.phone || '',
         address: response.data.address || '',
+        gender: response.data.gender || '',
+        dob: response.data.dob ? new Date(response.data.dob).toISOString().split('T')[0] : response.data.dob || '',
         image: response.data.image || '',
         password: '',
         repeatPassword: '',
@@ -66,7 +70,7 @@ const Profile = () => {
 
   const validateForm = useCallback(() => {
     const newErrors = {};
-    const { username, name, email, phone, address, image, password, repeatPassword } = formData;
+    const { username, name, email, phone, address, gender, dob, image, password, repeatPassword } = formData;
     if (!username || username.length < 3 || username.length > 30) {
       newErrors.username = 'Username must be 3-30 characters';
     }
@@ -81,6 +85,12 @@ const Profile = () => {
     }
     if (!address || address.length > 100) {
       newErrors.address = 'Address cannot exceed 100 characters';
+    }
+    if (gender && !['Male', 'Female', 'Other'].includes(gender)) {
+      newErrors.gender = 'Gender must be Male, Female, or Other';
+    }
+    if (dob && new Date(dob) > new Date()) {
+      newErrors.dob = 'Date of birth cannot be in the future';
     }
     if (image && !/^(http|https):\/\/[^ "]+$/.test(image)) {
       newErrors.image = 'Image must be a valid URL';
@@ -104,6 +114,8 @@ const Profile = () => {
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
+        gender: formData.gender,
+        dob: formData.dob,
         image: formData.image,
         ...(formData.password && { password: formData.password }),
       };
@@ -145,7 +157,14 @@ const Profile = () => {
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let processedValue = value;
+    
+    // Format date for dob field
+    if (name === 'dob' && value) {
+      processedValue = new Date(value).toISOString().split('T')[0];
+    }
+    
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
   }, []);
 
@@ -169,6 +188,8 @@ const Profile = () => {
       email: profile?.email || '',
       phone: profile?.phone || '',
       address: profile?.address || '',
+      gender: profile?.gender || '',
+      dob: profile?.dob ? new Date(profile.dob).toISOString().split('T')[0] : profile?.dob || '',
       image: profile?.image || '',
       password: '',
       repeatPassword: '',
@@ -234,6 +255,8 @@ const Profile = () => {
                 <p><strong>Email:</strong> {profile.email}</p>
                 <p><strong>Phone:</strong> {profile.phone || 'N/A'}</p>
                 <p><strong>Address:</strong> {profile.address || 'N/A'}</p>
+                <p><strong>Gender:</strong> {profile.gender || 'N/A'}</p>
+                <p><strong>Date of Birth:</strong> {profile.dob ? new Date(profile.dob).toLocaleDateString() : 'N/A'}</p>
                 <div className="profile-actions">
                   <button
                     className="edit-button"
@@ -261,25 +284,46 @@ const Profile = () => {
                 { id: 'email', label: 'Email', type: 'email', required: true },
                 { id: 'phone', label: 'Phone', type: 'text', required: true, maxLength: 10 },
                 { id: 'address', label: 'Address', type: 'text', required: true, maxLength: 100 },
+                { id: 'gender', label: 'Gender', type: 'select', required: false, options: ['Male', 'Female', 'Other'] },
+                { id: 'dob', label: 'Date of Birth', type: 'date', required: false },
                 { id: 'image', label: 'Profile Image URL (Optional)', type: 'text', required: false },
                 { id: 'password', label: 'Password (leave blank to keep current)', type: 'password', required: false },
                 { id: 'repeatPassword', label: 'Repeat Password', type: 'password', required: false },
               ].map((item) => (
                 <div className="profile-form-group" key={item.id}>
                   <label htmlFor={item.id} className="profile-form-label">{item.label}</label>
-                  <input
-                    id={item.id}
-                    type={item.type}
-                    name={item.id}
-                    value={formData[item.id]}
-                    onChange={handleChange}
-                    ref={item.id === 'username' ? firstInputRef : undefined}
-                    required={item.required}
-                    maxLength={item.maxLength}
-                    className="profile-form-input"
-                    aria-required={item.required}
-                    aria-invalid={!!errors[item.id]}
-                  />
+                  {item.type === 'select' ? (
+                    <select
+                      id={item.id}
+                      name={item.id}
+                      value={formData[item.id]}
+                      onChange={handleChange}
+                      className="profile-form-input"
+                      aria-required={item.required}
+                      aria-invalid={!!errors[item.id]}
+                    >
+                      <option value="">Select {item.label}</option>
+                      {item.options.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={item.id}
+                      type={item.type}
+                      name={item.id}
+                      value={formData[item.id]}
+                      onChange={handleChange}
+                      ref={item.id === 'username' ? firstInputRef : undefined}
+                      required={item.required}
+                      maxLength={item.maxLength}
+                      className="profile-form-input"
+                      aria-required={item.required}
+                      aria-invalid={!!errors[item.id]}
+                    />
+                  )}
                   {errors[item.id] && (
                     <div className="profile-field-error" aria-live="polite">{errors[item.id]}</div>
                   )}
