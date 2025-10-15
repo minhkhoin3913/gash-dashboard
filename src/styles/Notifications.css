@@ -1,202 +1,274 @@
+/* === Tổng thể === */
 .notifications-container {
   padding: 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-  background-color: #f8fafc;
+  max-width: 950px;
+  margin: 2rem auto;
+  background: #f4f7fb;
   font-family: "Inter", sans-serif;
+  color: #1f2937;
+  line-height: 1.6;
 }
 
 h2 {
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: #333;
-  margin-bottom: 1.5rem;
+  color: #0f172a;
+  margin-bottom: 2rem;
   text-align: center;
+  letter-spacing: -0.02em;
 }
 
 h3 {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   font-weight: 600;
+  color: #1e293b;
   margin-bottom: 1rem;
-  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* 🔹 Form gửi thông báo */
-.notification-form {
+/* === Card chung === */
+.card {
   background: #fff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  padding: 1.8rem;
   margin-bottom: 2rem;
+  transition: all 0.25s ease;
 }
 
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+}
+
+/* === Form gửi thông báo === */
 .notification-form input,
 .notification-form textarea,
 .notification-form select {
   width: 100%;
-  padding: 0.7rem;
+  padding: 0.85rem 1rem;
   margin: 0.5rem 0 1rem;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  transition: 0.2s;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #f9fafb;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
 }
 
 .notification-form input:focus,
 .notification-form textarea:focus,
 .notification-form select:focus {
-  border-color: #ffb300;
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
   outline: none;
-  box-shadow: 0 0 5px rgba(255,179,0,0.3);
 }
 
 .notification-form button {
-  background: #ffb300;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: white;
   border: none;
-  padding: 0.7rem 1.5rem;
-  border-radius: 8px;
+  padding: 0.8rem 1.6rem;
+  border-radius: 10px;
   cursor: pointer;
-  transition: 0.2s;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
 }
 
 .notification-form button:hover {
-  background: #ff9900;
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-2px);
 }
 
-/* 🔹 Danh sách thông báo */
+/* === Danh sách thông báo === */
 .notification-list {
   background: #fff;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
 }
 
 .notification-item {
+  background: #f9fafb;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  background: #fff9e6;
-  border: 1px solid #ffe299;
-  border-radius: 10px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  transition: 0.2s;
+  transition: all 0.2s ease;
 }
 
 .notification-item:hover {
-  background: #fff2cc;
+  background: #f1f5f9;
+  transform: translateY(-2px);
 }
 
 .notification-item strong {
-  color: #333;
-  font-size: 1rem;
+  color: #0f172a;
+  font-weight: 600;
+  display: block;
 }
 
 .notification-item p {
   margin: 0.3rem 0;
-  color: #555;
+  color: #475569;
+  font-size: 0.95rem;
 }
 
 .notification-item span {
-  font-size: 0.85rem;
-  color: #888;
+  font-size: 0.8rem;
+  color: #94a3b8;
 }
 
 .delete-btn {
   background: none;
   border: none;
-  font-size: 1.2rem;
-  color: #999;
+  color: #94a3b8;
+  font-size: 1.25rem;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s ease;
 }
 
 .delete-btn:hover {
-  color: #ff4d4d;
-  transform: scale(1.1);
+  color: #ef4444;
+  transform: scale(1.15);
 }
 
-/* 🔹 Preferences */
+/* === Preferences === */
 .preferences-section {
   background: #fff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-top: 2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  padding: 1.8rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
 }
 
 .preferences-grid {
   display: flex;
+  flex-wrap: wrap;
   gap: 1.5rem;
-  margin: 1rem 0;
+  margin: 1.2rem 0;
+}
+
+.preferences-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: #374151;
 }
 
 .save-btn {
-  background: #4caf50;
+  background: linear-gradient(135deg, #16a34a, #15803d);
   color: white;
-  padding: 0.6rem 1.2rem;
+  padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: 0.2s;
+  font-weight: 500;
+  transition: all 0.25s ease;
 }
 
 .save-btn:hover {
-  background: #45a049;
+  background: linear-gradient(135deg, #15803d, #166534);
+  transform: translateY(-2px);
 }
 
-/* 🔹 Templates */
+/* === Templates === */
 .templates-section {
   background: #fff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-top: 2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  padding: 1.8rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
 }
 
 .template-list {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 .template-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.8rem 0;
-  border-bottom: 1px solid #eee;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.2s ease;
+}
+
+.template-item:hover {
+  background: #f9fafb;
 }
 
 .template-item p {
-  color: #555;
-  font-size: 0.9rem;
-}
-
-.edit-btn {
-  background: #2196f3;
-  color: white;
-  border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.edit-btn:hover {
-  background: #1976d2;
-}
-
-/* 🔹 Edit template */
-.edit-template input,
-.edit-template textarea {
-  width: 100%;
-  padding: 0.7rem;
-  margin-bottom: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #ccc;
+  color: #475569;
+  font-size: 0.95rem;
 }
 
 .template-actions {
   display: flex;
   gap: 0.6rem;
+}
+
+.edit-btn {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+  transition: all 0.25s ease;
+}
+
+.edit-btn:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  transform: translateY(-2px);
+}
+
+/* === Form sửa template === */
+.edit-template input,
+.edit-template textarea {
+  width: 100%;
+  padding: 0.8rem;
+  margin-bottom: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  font-size: 0.95rem;
+}
+
+.edit-template input:focus,
+.edit-template textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  outline: none;
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .notifications-container {
+    padding: 1.5rem;
+  }
+
+  .preferences-grid {
+    flex-direction: column;
+  }
+
+  .notification-item {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .template-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }
