@@ -424,8 +424,7 @@ const Accounts = () => {
                 value={filters.searchQuery}
                 onChange={handleFilterChange}
                 className="accounts-filter-input"
-                placeholder="Search by username, name, email, phone..."
-                aria-label="Search accounts"
+                placeholder="Search by username, name, email..."
               />
             </div>
             <div className="accounts-filter-group">
@@ -435,12 +434,11 @@ const Accounts = () => {
                 value={filters.roleFilter}
                 onChange={handleFilterChange}
                 className="accounts-filter-select"
-                aria-label="Filter by role"
               >
                 <option value="">All Roles</option>
-                {roleOptions.map(role => (
-                  <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
-                ))}
+                <option value="user">User</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
             <div className="accounts-filter-group">
@@ -450,12 +448,11 @@ const Accounts = () => {
                 value={filters.statusFilter}
                 onChange={handleFilterChange}
                 className="accounts-filter-select"
-                aria-label="Filter by status"
               >
                 <option value="">All Statuses</option>
-                {statusOptions.map(status => (
-                  <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
-                ))}
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="deleted">Deleted</option>
               </select>
             </div>
             <div className="accounts-filter-group">
@@ -465,7 +462,6 @@ const Accounts = () => {
                 value={filters.hasImage}
                 onChange={handleFilterChange}
                 className="accounts-filter-select"
-                aria-label="Filter by custom image"
               >
                 <option value="">All</option>
                 <option value="true">Yes</option>
@@ -532,25 +528,25 @@ const Accounts = () => {
                 <tr key={account._id} className={`accounts-table-row ${account.is_deleted ? 'deleted-account' : ''}`}>
                   <td data-label="#">{startIndex + index + 1}</td>
                   <td data-label="Username">
-                    {account.is_deleted ? '[DELETED]' : (account.username || 'N/A')}
+                    {account.username || 'N/A'}
                   </td>
                   <td data-label="Name">
-                    {account.is_deleted ? '[DELETED]' : (account.name || 'N/A')}
+                    {account.name || 'N/A'}
                   </td>
                   <td data-label="Email">
-                    {account.is_deleted ? '[DELETED]' : (account.email || 'N/A')}
+                    {account.email || 'N/A'}
                   </td>
                   <td data-label="Phone">
-                    {account.is_deleted ? '[DELETED]' : (account.phone || 'N/A')}
+                    {account.phone || 'N/A'}
                   </td>
                   <td data-label="Address">
-                    {account.is_deleted ? '[DELETED]' : (account.address || 'N/A')}
+                    {account.address || 'N/A'}
                   </td>
                   <td data-label="Gender">
-                    {account.is_deleted ? '[DELETED]' : (account.gender || 'N/A')}
+                    {account.gender || 'N/A'}
                   </td>
                   <td data-label="Date of Birth">
-                    {account.is_deleted ? '[DELETED]' : (account.dob ? new Date(account.dob).toLocaleDateString() : 'N/A')}
+                    {account.dob ? new Date(account.dob).toLocaleDateString() : 'N/A'}
                   </td>
                   <td data-label="Role">
                     {editingAccountId === account._id && user.role === 'admin' && !account.is_deleted ? (
@@ -583,8 +579,8 @@ const Accounts = () => {
                         <option value="suspended">Suspended</option>
                       </select>
                     ) : (
-                      <span className={`status-badge ${account.is_deleted ? 'deleted' : (account.acc_status || 'active')}`}>
-                        {account.is_deleted ? 'DELETED' : (account.acc_status || 'N/A')}
+                      <span className={`status-badge ${account.acc_status || 'active'}`}>
+                        {account.acc_status || 'N/A'}
                       </span>
                     )}
                   </td>
